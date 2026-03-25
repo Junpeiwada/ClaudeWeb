@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { Box, IconButton, InputBase } from "@mui/material";
 import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
+import StopRoundedIcon from "@mui/icons-material/StopRounded";
 
 interface Props {
   onSend: (message: string) => void;
+  onStop: () => void;
   disabled: boolean;
+  isLoading: boolean;
 }
 
-export default function MessageInput({ onSend, disabled }: Props) {
+export default function MessageInput({ onSend, onStop, disabled, isLoading }: Props) {
   const [text, setText] = useState("");
 
   const handleSend = () => {
@@ -64,29 +67,50 @@ export default function MessageInput({ onSend, disabled }: Props) {
           },
         }}
       />
-      <IconButton
-        onClick={handleSend}
-        disabled={!canSend}
-        size="small"
-        sx={{
-          width: 32,
-          height: 32,
-          borderRadius: "var(--radius-sm)",
-          bgcolor: canSend ? "var(--color-accent)" : "var(--color-bg-secondary)",
-          color: canSend ? "#fff" : "var(--color-text-tertiary)",
-          flexShrink: 0,
-          transition: "all 0.15s ease",
-          "&:hover": {
-            bgcolor: canSend ? "var(--color-accent-hover)" : "var(--color-bg-secondary)",
-          },
-          "&.Mui-disabled": {
-            bgcolor: "var(--color-bg-secondary)",
-            color: "var(--color-text-tertiary)",
-          },
-        }}
-      >
-        <ArrowUpwardRoundedIcon sx={{ fontSize: 18 }} />
-      </IconButton>
+      {isLoading ? (
+        <IconButton
+          onClick={onStop}
+          size="small"
+          sx={{
+            width: 32,
+            height: 32,
+            borderRadius: "var(--radius-sm)",
+            bgcolor: "var(--color-text-secondary)",
+            color: "#fff",
+            flexShrink: 0,
+            transition: "all 0.15s ease",
+            "&:hover": {
+              bgcolor: "var(--color-text)",
+            },
+          }}
+        >
+          <StopRoundedIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+      ) : (
+        <IconButton
+          onClick={handleSend}
+          disabled={!canSend}
+          size="small"
+          sx={{
+            width: 32,
+            height: 32,
+            borderRadius: "var(--radius-sm)",
+            bgcolor: canSend ? "var(--color-accent)" : "var(--color-bg-secondary)",
+            color: canSend ? "#fff" : "var(--color-text-tertiary)",
+            flexShrink: 0,
+            transition: "all 0.15s ease",
+            "&:hover": {
+              bgcolor: canSend ? "var(--color-accent-hover)" : "var(--color-bg-secondary)",
+            },
+            "&.Mui-disabled": {
+              bgcolor: "var(--color-bg-secondary)",
+              color: "var(--color-text-tertiary)",
+            },
+          }}
+        >
+          <ArrowUpwardRoundedIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+      )}
     </Box>
   );
 }

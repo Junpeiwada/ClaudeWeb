@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getSession } from "../claude/executor.js";
+import { getSession, interruptSession } from "../claude/executor.js";
 
 const router = Router();
 
@@ -15,6 +15,11 @@ router.get("/api/status", (_req, res) => {
     sessionId: session.sessionId,
     pendingPermission: session.pendingPermission,
   });
+});
+
+router.post("/api/interrupt", async (_req, res) => {
+  const interrupted = await interruptSession();
+  res.json({ interrupted });
 });
 
 export default router;

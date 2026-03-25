@@ -1,0 +1,17 @@
+{
+  "name": "ClaudeWeb",
+  "short_name": "ClaudeWeb",
+  "description": "Claude Code Web Interface",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF9F7",
+  "theme_color": "#C96442",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

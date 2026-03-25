@@ -2,10 +2,12 @@ import { Box, Typography } from "@mui/material";
 
 interface Props {
   activity: string | null;
+  isLoading?: boolean;
 }
 
-export default function ActivityIndicator({ activity }: Props) {
-  if (!activity) return null;
+export default function ActivityIndicator({ activity, isLoading }: Props) {
+  const label = activity ?? (isLoading ? "Using Tool..." : null);
+  if (!label) return null;
 
   return (
     <Box
@@ -47,7 +49,7 @@ export default function ActivityIndicator({ activity }: Props) {
           letterSpacing: "-0.01em",
         }}
       >
-        {activity}
+        {label}
       </Typography>
     </Box>
   );

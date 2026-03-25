@@ -23,8 +23,11 @@ app.use(permissionRouter);
 
 // Serve frontend static files in production
 const frontendDist = path.join(__dirname, "../frontend/dist");
-app.use(express.static(frontendDist));
+// assetsはハッシュ付きなので長期キャッシュOK、HTMLはキャッシュしない
+app.use("/assets", express.static(path.join(frontendDist, "assets"), { maxAge: "1y" }));
+app.use(express.static(frontendDist, { etag: false, lastModified: false, maxAge: 0 }));
 app.get("/{*path}", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   res.sendFile(path.join(frontendDist, "index.html"));
 });
 

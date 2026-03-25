@@ -35,6 +35,15 @@ const theme = createTheme({
 export default function App() {
   const [repoId, setRepoId] = useState("");
   const [chatKey, setChatKey] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [autoEdit, setAutoEdit] = useState(
+    () => localStorage.getItem("claudeweb-auto-edit") !== "false"
+  );
+
+  const handleAutoEditChange = (value: boolean) => {
+    setAutoEdit(value);
+    localStorage.setItem("claudeweb-auto-edit", String(value));
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -42,9 +51,20 @@ export default function App() {
       <Header
         repoId={repoId}
         onRepoChange={setRepoId}
-        onNewChat={() => setChatKey((k) => k + 1)}
+        onNewChat={() => {
+          setChatKey((k) => k + 1);
+          setSessionId(null);
+        }}
+        sessionId={sessionId}
+        autoEdit={autoEdit}
+        onAutoEditChange={handleAutoEditChange}
       />
-      <Chat key={`${repoId}-${chatKey}`} repoId={repoId} />
+      <Chat
+        key={`${repoId}-${chatKey}`}
+        repoId={repoId}
+        autoEdit={autoEdit}
+        onSessionIdChange={setSessionId}
+      />
     </ThemeProvider>
   );
 }

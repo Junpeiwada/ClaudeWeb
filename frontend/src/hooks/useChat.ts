@@ -21,7 +21,7 @@ export function useChat() {
   const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
-    async (message: string, repoId: string) => {
+    async (message: string, repoId: string, autoEdit: boolean = true) => {
       setMessages((prev) => [...prev, { role: "user", content: message }]);
       setIsLoading(true);
 
@@ -35,7 +35,7 @@ export function useChat() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, repoId, sessionId }),
+          body: JSON.stringify({ message, repoId, sessionId, autoEdit }),
           signal: controller.signal,
         });
 
@@ -57,7 +57,9 @@ export function useChat() {
             if (!line.startsWith("data: ")) continue;
             const data = JSON.parse(line.slice(6));
 
-            if (data.type === "activity") {
+            if (data.type === "session_id") {
+              setSessionId(data.sessionId);
+            } else if (data.type === "activity") {
               setActivity(data.activity);
             } else if (data.type === "text") {
               setActivity(null);

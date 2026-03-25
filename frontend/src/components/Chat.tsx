@@ -1,3 +1,4 @@
+import { useRef, useCallback } from "react";
 import { Box } from "@mui/material";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
@@ -7,17 +8,31 @@ import { useChat } from "../hooks/useChat";
 
 interface Props {
   repoId: string;
+  autoEdit: boolean;
+  onSessionIdChange?: (sessionId: string | null) => void;
 }
 
-export default function Chat({ repoId }: Props) {
+export default function Chat({ repoId, autoEdit, onSessionIdChange }: Props) {
   const {
     messages,
     isLoading,
     activity,
+    sessionId,
     pendingPermission,
     sendMessage,
     respondPermission,
   } = useChat();
+
+  // sessionId変更時に親に通知
+  const prevSessionIdRef = useRef(sessionId);
+  if (prevSessionIdRef.current !== sessionId) {
+    prevSessionIdRef.current = sessionId;
+    onSessionIdChange?.(sessionId);
+  }
+
+  const handleStop = useCallback(async () => {
+    await fetch("/api/interrupt", { method: "POST" });
+  }, []);
 
   return (
     <Box
@@ -39,13 +54,15 @@ export default function Chat({ repoId }: Props) {
           maxWidth: "var(--max-width)",
           mx: "auto",
           px: { xs: 1, sm: 2 },
-          pb: { xs: 1.5, sm: 2 },
+          pb: { xs: "calc(12px + env(safe-area-inset-bottom))", sm: "calc(16px + env(safe-area-inset-bottom))" },
         }}
       >
-        <ActivityIndicator activity={activity} />
+        <ActivityIndicator activity={activity} isLoading={isLoading} />
         <MessageInput
-          onSend={(msg) => sendMessage(msg, repoId)}
+          onSend={(msg) => sendMessage(msg, repoId, autoEdit)}
+          onStop={handleStop}
           disabled={isLoading || !repoId || !!pendingPermission}
+          isLoading={isLoading}
         />
       </Box>
 
