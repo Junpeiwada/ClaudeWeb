@@ -42,6 +42,9 @@ router.post("/api/chat", async (req, res) => {
     onActivity: (activity) => {
       send({ type: "activity", activity });
     },
+    onToolResult: (result) => {
+      send({ type: "tool_result", toolName: result.toolName, content: result.content });
+    },
     onSessionId: (sessionId) => {
       send({ type: "session_id", sessionId });
     },

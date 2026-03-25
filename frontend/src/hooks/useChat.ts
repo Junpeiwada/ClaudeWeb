@@ -11,6 +11,11 @@ export interface PendingPermission {
   toolInput: Record<string, unknown>;
 }
 
+function buildToolResultMarker(toolName: string, content: string): string {
+  const payload = encodeURIComponent(JSON.stringify({ toolName, content }));
+  return `\n\n<!--TOOL_RESULT:${payload}-->\n\n`;
+}
+
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,6 +79,19 @@ export function useChat() {
                 }
                 return updated;
               });
+            } else if (data.type === "tool_result") {
+              setActivity(null);
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last?.role === "assistant") {
+                  updated[updated.length - 1] = {
+                    ...last,
+                    content: last.content + buildToolResultMarker(data.toolName ?? "Tool", data.content),
+                  };
+                }
+                return updated;
+              });
             } else if (data.type === "permission") {
               setPendingPermission({
                 requestId: data.requestId,
@@ -88,9 +106,13 @@ export function useChat() {
                 const updated = [...prev];
                 const last = updated[updated.length - 1];
                 if (last?.role === "assistant") {
+                  const nextContent =
+                    last.content.trim().length > 0
+                      ? `${last.content}\n\nError: ${data.error}`
+                      : `Error: ${data.error}`;
                   updated[updated.length - 1] = {
                     ...last,
-                    content: `Error: ${data.error}`,
+                    content: nextContent,
                   };
                 }
                 return updated;

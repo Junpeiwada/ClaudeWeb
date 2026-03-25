@@ -1,15 +1,42 @@
 import { query } from "@anthropic-ai/claude-code";
 import type { SDKMessage, PermissionResult } from "@anthropic-ai/claude-code";
 import { randomUUID } from "crypto";
-import { appendFileSync } from "fs";
+import { appendFile, readdir, unlink, rename } from "fs/promises";
 import { join } from "path";
 
-const LOG_FILE = join(import.meta.dirname, "../../debug.log");
+const LOG_DIR = join(import.meta.dirname, "../../logs");
+const LOG_RETENTION_DAYS = 10;
+
+let currentLogDate = "";
+let currentLogFile = "";
+
+function getLogFile(): string {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  if (today !== currentLogDate) {
+    currentLogDate = today;
+    currentLogFile = join(LOG_DIR, `${today}.log`);
+    cleanOldLogs().catch(() => {});
+  }
+  return currentLogFile;
+}
+
+async function cleanOldLogs(): Promise<void> {
+  const files = await readdir(LOG_DIR).catch(() => [] as string[]);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - LOG_RETENTION_DAYS);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  for (const file of files) {
+    if (file.endsWith(".log") && file.slice(0, 10) < cutoffStr) {
+      await unlink(join(LOG_DIR, file)).catch(() => {});
+    }
+  }
+}
 
 function log(label: string, data: unknown): void {
   const ts = new Date().toISOString();
   const line = `[${ts}] ${label}: ${typeof data === "string" ? data : JSON.stringify(data, null, 2)}\n`;
-  appendFileSync(LOG_FILE, line);
+  appendFile(getLogFile(), line).catch(() => {});
 }
 
 export interface PendingPermission {
@@ -88,9 +115,15 @@ export function resolvePermission(requestId: string, approved: boolean): boolean
   return true;
 }
 
+export interface ToolResult {
+  toolName: string;
+  content: string;
+}
+
 export interface ChatCallbacks {
   onText: (content: string) => void;
   onActivity: (activity: string) => void;
+  onToolResult: (result: ToolResult) => void;
   onSessionId: (sessionId: string) => void;
   onPermission: (permission: PendingPermission) => void;
   onDone: (sessionId: string | null) => void;
@@ -117,11 +150,12 @@ export async function executeChat(
     abortController,
   };
   currentSession = session;
+  const stderrBuffer: string[] = [];
 
   log("REQUEST", { message: message.slice(0, 200), repoId, repoPath, resumeSessionId });
 
   try {
-    await runQuery(message, repoPath, abortController, resumeSessionId, autoEdit, session, callbacks);
+    await runQuery(message, repoPath, abortController, resumeSessionId, autoEdit, session, callbacks, stderrBuffer);
     callbacks.onDone(session.sessionId);
   } catch (err: any) {
     if (err.name === "AbortError" || abortController.signal.aborted) {
@@ -134,7 +168,8 @@ export async function executeChat(
       log("RETRY", "resume failed, retrying without sessionId");
       session.sessionId = null;
       try {
-        await runQuery(message, repoPath, abortController, null, autoEdit, session, callbacks);
+        stderrBuffer.length = 0;
+        await runQuery(message, repoPath, abortController, null, autoEdit, session, callbacks, stderrBuffer);
         callbacks.onDone(session.sessionId);
         return;
       } catch (retryErr: any) {
@@ -143,14 +178,72 @@ export async function executeChat(
           return;
         }
         log("ERROR", { name: retryErr.name, message: retryErr.message, stack: retryErr.stack });
-        callbacks.onError(retryErr.message ?? String(retryErr));
+        callbacks.onError(normalizeChatError(retryErr, stderrBuffer));
         return;
       }
     }
 
     log("ERROR", { name: err.name, message: err.message, stack: err.stack });
-    callbacks.onError(err.message ?? String(err));
+    callbacks.onError(normalizeChatError(err, stderrBuffer));
   }
+}
+
+function stringifyToolResultContent(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "text" in item && typeof (item as { text?: unknown }).text === "string") {
+          return (item as { text: string }).text;
+        }
+        return JSON.stringify(item, null, 2);
+      })
+      .join("\n");
+  }
+  if (content == null) return "";
+  return JSON.stringify(content, null, 2);
+}
+
+function normalizeChatError(error: unknown, stderrBuffer: string[]): string {
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  const stderrMessage = extractRelevantStderr(stderrBuffer);
+
+  if (stderrMessage) {
+    return stderrMessage;
+  }
+
+  if (/exited with code 1/i.test(rawMessage)) {
+    return "Claude Code process exited with code 1. Check usage limits or authentication state.";
+  }
+
+  return rawMessage;
+}
+
+function extractRelevantStderr(stderrBuffer: string[]): string | null {
+  const lines = stderrBuffer
+    .flatMap((chunk) => chunk.split(/\r?\n/))
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !line.startsWith("Spawning Claude Code process:"))
+    .filter((line) => !line.startsWith("Claude Code process exited with code"))
+    .filter((line) => !line.startsWith("Claude Code stderr:"));
+
+  if (lines.length === 0) {
+    return null;
+  }
+
+  const joined = lines.join("\n");
+  const limitLine = lines.find((line) => /you'?ve hit your limit|usage limit|rate limit|quota/i.test(line));
+  if (limitLine) {
+    return limitLine;
+  }
+
+  if (/you'?ve hit your limit|usage limit|rate limit|quota/i.test(joined)) {
+    return joined;
+  }
+
+  return lines.slice(-3).join("\n");
 }
 
 async function runQuery(
@@ -160,7 +253,8 @@ async function runQuery(
   resumeSessionId: string | null,
   autoEdit: boolean,
   session: Session,
-  callbacks: ChatCallbacks
+  callbacks: ChatCallbacks,
+  stderrBuffer: string[]
 ): Promise<void> {
   // VSCodeデバッガ関連の環境変数を子プロセスに継承させない
   const cleanEnv = { ...process.env };
@@ -179,12 +273,15 @@ async function runQuery(
       permissionMode: "default",
       stderr: (data: string) => {
         log("STDERR", data);
+        stderrBuffer.push(data);
       },
       canUseTool: async (toolName, input, { signal }) => {
+        log("TOOL", { toolName, autoEdit, inputKeys: Object.keys(input) });
         // autoEdit有効時はEdit/Writeを自動承認
         if (autoEdit) {
           const autoApproveTools = ["Edit", "Write", "MultiEdit"];
           if (autoApproveTools.includes(toolName)) {
+            log("AUTO_APPROVE", toolName);
             return { behavior: "allow" as const, updatedInput: input };
           }
         }
@@ -211,6 +308,9 @@ async function runQuery(
     },
   });
 
+  const toolUseNames = new Map<string, string>();
+  let receivedTextDelta = false;
+
   for await (const msg of stream) {
     if (abortController.signal.aborted) break;
 
@@ -223,6 +323,7 @@ async function runQuery(
     if (msg.type === "stream_event") {
       const event = (msg as any).event;
       if (event?.type === "content_block_delta" && event.delta?.type === "text_delta") {
+        receivedTextDelta = true;
         callbacks.onText(event.delta.text);
       }
       continue;
@@ -233,7 +334,10 @@ async function runQuery(
       if (Array.isArray(content)) {
         for (const block of content) {
           if ("type" in block && block.type === "tool_use") {
-            const toolBlock = block as { name: string; input: Record<string, unknown> };
+            const toolBlock = block as { id?: string; name: string; input: Record<string, unknown> };
+            if (typeof toolBlock.id === "string") {
+              toolUseNames.set(toolBlock.id, toolBlock.name);
+            }
             const label = formatToolActivity(toolBlock.name, toolBlock.input);
             callbacks.onActivity(label);
           }
@@ -241,10 +345,24 @@ async function runQuery(
       }
     }
 
-    if (msg.type === "result") {
-      if ("result" in msg && msg.result) {
-        callbacks.onText(msg.result);
+    // ツール結果（user メッセージ内の tool_result）
+    if (msg.type === "user") {
+      const content = (msg as any).message?.content;
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          if (block.type === "tool_result") {
+            const toolUseId = typeof block.tool_use_id === "string" ? block.tool_use_id : "";
+            callbacks.onToolResult({
+              toolName: toolUseNames.get(toolUseId) ?? "Tool",
+              content: stringifyToolResultContent(block.content),
+            });
+          }
+        }
       }
+    }
+
+    if (msg.type === "result" && "result" in msg && msg.result && !receivedTextDelta) {
+      callbacks.onText(msg.result);
     }
   }
 }

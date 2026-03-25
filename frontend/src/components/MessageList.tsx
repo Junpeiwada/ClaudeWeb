@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import { Box, Typography } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -7,6 +7,54 @@ import type { Message } from "../hooks/useChat";
 interface Props {
   messages: Message[];
   isLoading: boolean;
+}
+
+interface ToolResultSegment {
+  kind: "tool_result";
+  toolName: string;
+  content: string;
+}
+
+interface MarkdownSegment {
+  kind: "markdown";
+  content: string;
+}
+
+type ContentSegment = MarkdownSegment | ToolResultSegment;
+
+const TOOL_RESULT_PATTERN = /<!--TOOL_RESULT:(.*?)-->/gs;
+
+function parseAssistantContent(content: string): ContentSegment[] {
+  const segments: ContentSegment[] = [];
+  let lastIndex = 0;
+
+  for (const match of content.matchAll(TOOL_RESULT_PATTERN)) {
+    const [raw, payload] = match;
+    const start = match.index ?? 0;
+
+    if (start > lastIndex) {
+      segments.push({ kind: "markdown", content: content.slice(lastIndex, start) });
+    }
+
+    try {
+      const parsed = JSON.parse(decodeURIComponent(payload)) as { toolName?: string; content?: string };
+      segments.push({
+        kind: "tool_result",
+        toolName: parsed.toolName || "Tool",
+        content: parsed.content || "",
+      });
+    } catch {
+      segments.push({ kind: "markdown", content: raw });
+    }
+
+    lastIndex = start + raw.length;
+  }
+
+  if (lastIndex < content.length) {
+    segments.push({ kind: "markdown", content: content.slice(lastIndex) });
+  }
+
+  return segments.length > 0 ? segments : [{ kind: "markdown", content }];
 }
 
 export default function MessageList({ messages, isLoading }: Props) {
@@ -74,9 +122,6 @@ export default function MessageList({ messages, isLoading }: Props) {
       sx={{
         flex: 1,
         overflow: "auto",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "flex-end",
         minHeight: 0,
       }}
     >
@@ -90,6 +135,8 @@ export default function MessageList({ messages, isLoading }: Props) {
           display: "flex",
           flexDirection: "column",
           gap: 2.5,
+          minHeight: "100%",
+          justifyContent: "flex-end",
         }}
       >
         {messages.map((msg, i) =>
@@ -258,9 +305,52 @@ function AssistantMessage({
           bgcolor: "var(--color-bg-secondary)",
           fontWeight: 600,
         },
+        "& details": {
+          my: 1.5,
+          border: "1px solid var(--color-border)",
+          borderRadius: "var(--radius-md)",
+          bgcolor: "var(--color-bg-secondary)",
+          overflow: "hidden",
+        },
+        "& summary": {
+          cursor: "pointer",
+          px: 1.5,
+          py: 1,
+          fontSize: "13px",
+          fontWeight: 600,
+          color: "var(--color-text-secondary)",
+          userSelect: "none",
+        },
+        "& details > div": {
+          px: 1.5,
+          pb: 1.5,
+        },
       }}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      {parseAssistantContent(content).map((segment, index) => (
+        <Fragment key={index}>
+          {segment.kind === "markdown" ? (
+            segment.content.trim() ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{segment.content}</ReactMarkdown>
+            ) : null
+          ) : (
+            <details>
+              <summary>{segment.toolName} Result</summary>
+              <Box component="div">
+                <Box
+                  component="pre"
+                  sx={{
+                    mb: 0,
+                    mt: 0.5,
+                  }}
+                >
+                  <code>{segment.content}</code>
+                </Box>
+              </Box>
+            </details>
+          )}
+        </Fragment>
+      ))}
     </Box>
   );
 }
