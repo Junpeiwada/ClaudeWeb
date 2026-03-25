@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "compounds": [
+    {
+      "name": "ClaudeWeb Dev",
+      "configurations": ["Server", "Frontend"],
+      "stopAll": true
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Server",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+      "args": ["watch", "server/index.ts"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Frontend",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npx",
+      "args": ["vite", "--host"],
+      "cwd": "${workspaceFolder}/frontend",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "ClaudeWeb Production",
+      "type": "node",
+      "request": "launch",
+      "preLaunchTask": "build-frontend",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+      "args": ["server/index.ts"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}
