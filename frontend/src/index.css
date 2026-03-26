@@ -27,8 +27,16 @@
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
   font-family: var(--font-sans);
   background: var(--color-bg);
   color: var(--color-text);
@@ -45,6 +53,7 @@ body {
   height: calc(100dvh - env(safe-area-inset-top));
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* Scrollbar styling */

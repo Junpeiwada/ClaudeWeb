@@ -76,6 +76,8 @@ export default function MessageList({ messages, isLoading, repoId }: Props) {
         flex: 1,
         overflow: "auto",
         minHeight: 0,
+        overscrollBehavior: "contain",
+        WebkitOverflowScrolling: "touch",
       }}
     >
       <Box
