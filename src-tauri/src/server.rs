@@ -115,6 +115,12 @@ fn get_server_root(app: &AppHandle) -> std::path::PathBuf {
         }
     }
 
+    // 4. ビルド時に埋め込まれたプロジェクトルート（/Applicationsへのインストール時用）
+    let build_root = std::path::PathBuf::from(env!("AGENTNEST_ROOT"));
+    if build_root.join("server").join("index.ts").exists() {
+        return build_root;
+    }
+
     // フォールバック
     std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("/"))
 }
