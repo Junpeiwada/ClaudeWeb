@@ -8,5 +8,6 @@ debug.log
 test-results/
 release/
 src-tauri/target/
+src-tauri/gen/
 build/icon.iconset/
 build/icon.svg
