@@ -18,6 +18,7 @@
     "リリース": "bash scripts/release.sh",
     "dev": "concurrently \"npm run 開発:サーバーのみ\" \"npm run 開発:フロントエンドのみ\"",
     "build": "cd frontend && npx vite build",
+    "kill:3000": "bash -lc 'pids=$(lsof -ti tcp:3000); if [ -n \"$pids\" ]; then kill $pids && echo \"Killed: $pids\"; else echo \"No process found on port 3000\"; fi'",
     "start": "tsx server/index.ts",
     "test": "npx playwright test",
     "tauri": "tauri"
