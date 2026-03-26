@@ -29,7 +29,23 @@ export default function Header({ repoId, onRepoChange, onNewChat, onResumeSessio
       }}
     >
       {/* Logo / Title */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <Box
+        onClick={onNewChat}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          cursor: "pointer",
+          userSelect: "none",
+          borderRadius: "var(--radius-sm)",
+          px: 0.5,
+          mx: -0.5,
+          transition: "opacity 0.15s ease",
+          "@media (hover: hover)": {
+            "&:hover": { opacity: 0.7 },
+          },
+        }}
+      >
         <Box
           sx={{
             width: 28,
