@@ -11,9 +11,16 @@ export interface AssistantError {
   message: string;
 }
 
+export interface ImageAttachment {
+  data: string;      // base64 (no data URL prefix)
+  mediaType: string; // e.g. "image/png"
+  preview: string;   // data URL for display
+}
+
 export interface Message {
   role: "user" | "assistant";
   content: string;
+  images?: ImageAttachment[];
   parts?: AssistantPart[];
   error?: AssistantError | null;
 }
@@ -157,6 +164,7 @@ export function useChat(
           )
         );
       } else if (data.type === "permission") {
+        console.log("[PERMISSION_RECEIVED]", data.toolName, data.requestId);
         setPendingPermission({
           requestId: data.requestId,
           toolName: data.toolName,
@@ -244,8 +252,10 @@ export function useChat(
   );
 
   const sendMessage = useCallback(
-    async (message: string, repoId: string, autoEdit: boolean = true) => {
-      setMessages((prev) => [...prev, { role: "user", content: message }]);
+    async (message: string, repoId: string, autoEdit: boolean = true, images?: ImageAttachment[]) => {
+      const userMsg: Message = { role: "user", content: message };
+      if (images?.length) userMsg.images = images;
+      setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
 
       // Add empty assistant message that we'll stream into
@@ -254,11 +264,16 @@ export function useChat(
       const controller = new AbortController();
       abortRef.current = controller;
 
+      // Prepare API images (strip preview for smaller payload)
+      const apiImages = images?.length
+        ? images.map(({ data, mediaType }) => ({ data, mediaType }))
+        : undefined;
+
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, repoId, sessionId, autoEdit }),
+          body: JSON.stringify({ message, repoId, sessionId, autoEdit, images: apiImages }),
           signal: controller.signal,
         });
 

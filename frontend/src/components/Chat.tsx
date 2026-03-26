@@ -5,7 +5,7 @@ import MessageInput from "./MessageInput";
 import ActivityIndicator from "./ActivityIndicator";
 import PermissionDialog from "./PermissionDialog";
 import { useChat } from "../hooks/useChat";
-import type { Message } from "../hooks/useChat";
+import type { Message, ImageAttachment } from "../hooks/useChat";
 
 interface Props {
   repoId: string;
@@ -62,7 +62,7 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
       >
         <ActivityIndicator activity={activity} isLoading={isLoading} />
         <MessageInput
-          onSend={(msg) => sendMessage(msg, repoId, autoEdit)}
+          onSend={(msg, images) => sendMessage(msg, repoId, autoEdit, images)}
           onStop={handleStop}
           disabled={isLoading || !repoId || !!pendingPermission}
           isLoading={isLoading}

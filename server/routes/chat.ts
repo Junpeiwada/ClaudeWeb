@@ -8,7 +8,7 @@ const router = Router();
 const BASE_DIR = "$BASE_PROJECT_DIR";
 
 router.post("/api/chat", async (req, res) => {
-  const { message, repoId, sessionId, autoEdit } = req.body;
+  const { message, repoId, sessionId, autoEdit, images } = req.body;
 
   if (!message || !repoId) {
     res.status(400).json({ error: "message and repoId are required" });
@@ -24,14 +24,18 @@ router.post("/api/chat", async (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders();
 
   let connectionOpen = true;
 
-  const send = (data: object) => {
+  const send = (data: object, flush = false) => {
     if (!connectionOpen) return;
     try {
       res.write(`data: ${JSON.stringify(data)}\n\n`);
+      if (flush && typeof (res as any).flush === "function") {
+        (res as any).flush();
+      }
     } catch {}
   };
 
@@ -58,12 +62,13 @@ router.post("/api/chat", async (req, res) => {
       send({ type: "session_id", sessionId });
     },
     onPermission: (permission) => {
+      console.log("[PERMISSION]", permission.toolName, "requestId:", permission.requestId, "connectionOpen:", connectionOpen);
       send({
         type: "permission",
         toolName: permission.toolName,
         toolInput: permission.toolInput,
         requestId: permission.requestId,
-      });
+      }, true);
     },
     onDone: (sid) => {
       clearInterval(keepalive);
@@ -79,7 +84,7 @@ router.post("/api/chat", async (req, res) => {
         try { res.end(); } catch {}
       }
     },
-  });
+  }, images);
 
   // Handle client disconnect — session continues for reconnection
   req.on("close", () => {

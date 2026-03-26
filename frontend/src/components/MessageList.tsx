@@ -96,7 +96,7 @@ export default function MessageList({ messages, isLoading, repoId }: Props) {
       >
         {messages.map((msg, i) =>
           msg.role === "user" ? (
-            <UserMessage key={i} content={msg.content} />
+            <UserMessage key={i} content={msg.content} images={msg.images} />
           ) : (
             <AssistantMessage
               key={i}
@@ -110,7 +110,7 @@ export default function MessageList({ messages, isLoading, repoId }: Props) {
   );
 }
 
-function UserMessage({ content }: { content: string }) {
+function UserMessage({ content, images }: { content: string; images?: Message["images"] }) {
   return (
     <Box
       sx={{
@@ -134,6 +134,32 @@ function UserMessage({ content }: { content: string }) {
           wordBreak: "break-word",
         }}
       >
+        {images && images.length > 0 && (
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: content ? 1 : 0 }}>
+            {images.map((img, i) => (
+              <Box
+                key={i}
+                sx={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: "var(--radius-sm)",
+                  overflow: "hidden",
+                }}
+              >
+                <img
+                  src={img.preview}
+                  alt=""
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                />
+              </Box>
+            ))}
+          </Box>
+        )}
         {content}
       </Box>
     </Box>

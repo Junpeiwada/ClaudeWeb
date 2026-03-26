@@ -1,5 +1,5 @@
 import { query } from "@anthropic-ai/claude-code";
-import type { SDKMessage, PermissionResult } from "@anthropic-ai/claude-code";
+import type { SDKMessage, SDKUserMessage, PermissionResult } from "@anthropic-ai/claude-code";
 import { randomUUID } from "crypto";
 import { appendFile, readdir, unlink, rename } from "fs/promises";
 import { join } from "path";
@@ -180,6 +180,11 @@ export interface ToolResult {
   content: string;
 }
 
+export interface ImageData {
+  data: string;      // base64 encoded
+  mediaType: string; // e.g. "image/png"
+}
+
 export interface ChatCallbacks {
   onText: (content: string) => void;
   onActivity: (activity: string) => void;
@@ -197,7 +202,8 @@ export async function executeChat(
   repoPath: string,
   resumeSessionId: string | null,
   autoEdit: boolean,
-  callbacks: ChatCallbacks
+  callbacks: ChatCallbacks,
+  images?: ImageData[]
 ): Promise<void> {
   // Abort any existing session
   abortCurrentSession();
@@ -285,7 +291,7 @@ export async function executeChat(
   };
 
   try {
-    await runQuery(message, repoPath, abortController, resumeSessionId, autoEdit, session, wrappedCallbacks, stderrBuffer);
+    await runQuery(message, repoPath, abortController, resumeSessionId, autoEdit, session, wrappedCallbacks, stderrBuffer, images);
     wrappedCallbacks.onDone(session.sessionId);
   } catch (err: any) {
     if (err.name === "AbortError" || abortController.signal.aborted) {
@@ -299,7 +305,7 @@ export async function executeChat(
       session.sessionId = null;
       try {
         stderrBuffer.length = 0;
-        await runQuery(message, repoPath, abortController, null, autoEdit, session, wrappedCallbacks, stderrBuffer);
+        await runQuery(message, repoPath, abortController, null, autoEdit, session, wrappedCallbacks, stderrBuffer, images);
         wrappedCallbacks.onDone(session.sessionId);
         return;
       } catch (retryErr: any) {
@@ -403,6 +409,31 @@ function extractRelevantStderr(stderrBuffer: string[]): string | null {
   return lines.slice(-3).join("\n");
 }
 
+async function* createImagePrompt(
+  message: string,
+  images: ImageData[]
+): AsyncIterable<SDKUserMessage> {
+  const content: any[] = [];
+  for (const img of images) {
+    content.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: img.mediaType,
+        data: img.data,
+      },
+    });
+  }
+  content.push({ type: "text", text: message });
+
+  yield {
+    type: "user",
+    message: { role: "user" as const, content },
+    parent_tool_use_id: null,
+    session_id: "",
+  };
+}
+
 async function runQuery(
   message: string,
   repoPath: string,
@@ -411,7 +442,8 @@ async function runQuery(
   autoEdit: boolean,
   session: Session,
   callbacks: ChatCallbacks,
-  stderrBuffer: string[]
+  stderrBuffer: string[],
+  images?: ImageData[]
 ): Promise<void> {
   // VSCodeデバッガ関連の環境変数を子プロセスに継承させない
   const cleanEnv = { ...process.env };
@@ -419,8 +451,12 @@ async function runQuery(
   delete cleanEnv.NODE_DEBUG_OPTION;
   delete cleanEnv.VSCODE_INSPECTOR_OPTIONS;
 
+  const prompt = images?.length
+    ? createImagePrompt(message, images)
+    : message;
+
   const stream = currentStream = query({
-    prompt: message,
+    prompt,
     options: {
       cwd: repoPath,
       abortController,

@@ -6,7 +6,17 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:3000',
+      '/api': {
+        target: 'http://localhost:3000',
+        // SSEストリーミングのバッファリングを防止
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            if (proxyRes.headers['content-type']?.includes('text/event-stream')) {
+              proxyRes.headers['x-accel-buffering'] = 'no';
+            }
+          });
+        },
+      },
     },
   },
 })

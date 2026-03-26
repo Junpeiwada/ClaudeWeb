@@ -1,6 +1,9 @@
 import { useState, useCallback } from "react";
-import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import { Box, CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
+import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import Chat from "./components/Chat";
+import FileExplorer from "./components/FileExplorer";
 import Header from "./components/Header";
 import type { Message } from "./hooks/useChat";
 
@@ -39,6 +42,7 @@ export default function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
   const [initialSessionId, setInitialSessionId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"chat" | "files">("chat");
   const [autoEdit, setAutoEdit] = useState(
     () => localStorage.getItem("claudeweb-auto-edit") !== "false"
   );
@@ -50,7 +54,6 @@ export default function App() {
 
   const handleResumeSession = useCallback(
     async (selectedSessionId: string) => {
-      // Fetch past messages for the selected session
       try {
         const res = await fetch(
           `/api/sessions/${encodeURIComponent(repoId)}/${selectedSessionId}/messages`
@@ -62,12 +65,12 @@ export default function App() {
         setSessionId(selectedSessionId);
         setChatKey((k) => k + 1);
       } catch {
-        // If fetch fails, still open with the session ID (no history shown)
         setInitialMessages([]);
         setInitialSessionId(selectedSessionId);
         setSessionId(selectedSessionId);
         setChatKey((k) => k + 1);
       }
+      setActiveTab("chat");
     },
     [repoId]
   );
@@ -77,6 +80,7 @@ export default function App() {
     setInitialSessionId(null);
     setSessionId(null);
     setChatKey((k) => k + 1);
+    setActiveTab("chat");
   }, []);
 
   return (
@@ -91,14 +95,63 @@ export default function App() {
         autoEdit={autoEdit}
         onAutoEditChange={handleAutoEditChange}
       />
-      <Chat
-        key={`${repoId}-${chatKey}`}
-        repoId={repoId}
-        autoEdit={autoEdit}
-        onSessionIdChange={setSessionId}
-        initialMessages={initialMessages}
-        initialSessionId={initialSessionId}
-      />
+
+      {/* Tab Bar */}
+      <Box
+        sx={{
+          display: "flex",
+          borderBottom: "1px solid var(--color-border)",
+          bgcolor: "var(--color-surface)",
+          flexShrink: 0,
+          px: { xs: 1, sm: 2 },
+        }}
+      >
+        {([
+          { key: "chat" as const, label: "チャット", icon: <ChatRoundedIcon sx={{ fontSize: 18 }} /> },
+          { key: "files" as const, label: "ファイル", icon: <FolderRoundedIcon sx={{ fontSize: 18 }} /> },
+        ]).map((tab) => (
+          <Box
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              px: { xs: 1.5, sm: 2 },
+              py: 1,
+              cursor: "pointer",
+              userSelect: "none",
+              fontSize: "13px",
+              fontWeight: activeTab === tab.key ? 600 : 400,
+              color: activeTab === tab.key ? "var(--color-accent)" : "var(--color-text-secondary)",
+              borderBottom: "2px solid",
+              borderColor: activeTab === tab.key ? "var(--color-accent)" : "transparent",
+              transition: "all 0.15s ease",
+              "&:hover": {
+                color: "var(--color-accent)",
+              },
+            }}
+          >
+            {tab.icon}
+            {tab.label}
+          </Box>
+        ))}
+      </Box>
+
+      {/* Content */}
+      <Box sx={{ display: activeTab === "chat" ? "flex" : "none", flexDirection: "column", flex: 1, minHeight: 0 }}>
+        <Chat
+          key={`${repoId}-${chatKey}`}
+          repoId={repoId}
+          autoEdit={autoEdit}
+          onSessionIdChange={setSessionId}
+          initialMessages={initialMessages}
+          initialSessionId={initialSessionId}
+        />
+      </Box>
+      <Box sx={{ display: activeTab === "files" ? "flex" : "none", flexDirection: "column", flex: 1, minHeight: 0 }}>
+        <FileExplorer repoId={repoId} onSwitchToChat={() => setActiveTab("chat")} />
+      </Box>
     </ThemeProvider>
   );
 }

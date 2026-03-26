@@ -8,6 +8,7 @@ import chatRouter from "./routes/chat.js";
 import permissionRouter from "./routes/permission.js";
 import reconnectRouter from "./routes/reconnect.js";
 import sessionsRouter from "./routes/sessions.js";
+import filesRouter from "./routes/files.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,7 +16,7 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "20mb" }));
 
 // API routes
 app.use(reposRouter);
@@ -24,6 +25,7 @@ app.use(chatRouter);
 app.use(permissionRouter);
 app.use(reconnectRouter);
 app.use(sessionsRouter);
+app.use(filesRouter);
 
 // Serve frontend static files in production
 const frontendDist = path.join(__dirname, "../frontend/dist");
