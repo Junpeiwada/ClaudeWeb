@@ -37,19 +37,31 @@ const theme = createTheme({
 });
 
 export default function App() {
+  const loadAutoEditPreference = () => {
+    const currentValue = localStorage.getItem("agent-nest-auto-edit");
+    if (currentValue !== null) return currentValue !== "false";
+
+    const legacyValue = localStorage.getItem("claudeweb-auto-edit");
+    if (legacyValue !== null) {
+      localStorage.setItem("agent-nest-auto-edit", legacyValue);
+      localStorage.removeItem("claudeweb-auto-edit");
+      return legacyValue !== "false";
+    }
+
+    return true;
+  };
+
   const [repoId, setRepoId] = useState("");
   const [chatKey, setChatKey] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
   const [initialSessionId, setInitialSessionId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"chat" | "files">("chat");
-  const [autoEdit, setAutoEdit] = useState(
-    () => localStorage.getItem("claudeweb-auto-edit") !== "false"
-  );
+  const [autoEdit, setAutoEdit] = useState(loadAutoEditPreference);
 
   const handleAutoEditChange = (value: boolean) => {
     setAutoEdit(value);
-    localStorage.setItem("claudeweb-auto-edit", String(value));
+    localStorage.setItem("agent-nest-auto-edit", String(value));
   };
 
   const handleRepoChange = useCallback((newRepoId: string) => {

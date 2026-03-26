@@ -1,5 +1,5 @@
 {
-  "name": "claude-web",
+  "name": "agent-nest",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,10 +12,17 @@
     "start": "tsx server/index.ts",
     "test": "npx playwright test",
     "test:ui": "npx playwright test --ui",
-    "electron:build": "tsc -p electron/tsconfig.json && cp electron/app.html dist-electron/ && cp -r electron/icons dist-electron/ && echo '{\"type\":\"commonjs\"}' > dist-electron/package.json",
+    "build:server": "tsc -p server/tsconfig.json",
+    "electron:build": "tsc -p electron/tsconfig.json && cp electron/app.html dist-electron/ && cp -r electron/icons dist-electron/ && echo '{\"type\":\"commonjs\"}' > dist-electron/package.json && npm run build:server",
     "electron:dev": "npm run build && npm run electron:build && electron dist-electron/main.js",
     "electron:dist": "npm run build && npm run electron:build && electron-builder --mac",
-    "electron:dist:dir": "npm run build && npm run electron:build && electron-builder --mac --dir"
+    "electron:dist:dir": "npm run build && npm run electron:build && electron-builder --mac --dir",
+    "build:mac": "npm run build && npm run electron:build && electron-builder --mac",
+    "build:mac:arm64": "npm run build && npm run electron:build && electron-builder --mac --arm64 --dir",
+    "build:mac:x64": "npm run build && npm run electron:build && electron-builder --mac --x64 --dir",
+    "dist:mac": "npm run build && npm run electron:build && electron-builder --mac",
+    "M系Macビルドインストール": "export GH_TOKEN=$(gh auth token) && npm run build:mac:arm64 && rm -rf /Applications/AgentNest.app && cp -R release/mac-arm64/AgentNest.app /Applications/ && echo \"正常完了 バージョン $(node -p \"require('./package.json').version\")\" && say -v Kyoko \"AgentNestのビルドとインストールが完了しました。バージョン$(node -p \"require('./package.json').version\")\" || (echo \"エラーが発生しました\" && say -v Kyoko \"AgentNestでエラーが発生しました\" && exit 1)",
+    "IntelMacビルドインストール": "export GH_TOKEN=$(gh auth token) && npm run build:mac:x64 && rm -rf /Applications/AgentNest.app && cp -R release/mac/AgentNest.app /Applications/ && echo \"正常完了 バージョン $(node -p \"require('./package.json').version\")\" && say -v Kyoko \"AgentNestのビルドとインストールが完了しました。バージョン$(node -p \"require('./package.json').version\")\" || (echo \"エラーが発生しました\" && say -v Kyoko \"AgentNestでエラーが発生しました\" && exit 1)"
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.0",
@@ -35,13 +42,14 @@
     "typescript": "^5.7.0"
   },
   "build": {
-    "appId": "com.junpeiwada.claudeweb",
-    "productName": "ClaudeWeb",
+    "appId": "com.junpeiwada.agentnest",
+    "productName": "AgentNest",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist-electron/**/*",
+      "dist-server/**/*",
       "server/**/*",
       "frontend/dist/**/*",
       "node_modules/**/*",
@@ -51,12 +59,11 @@
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.icns",
       "target": [
-        { "target": "dmg", "arch": ["arm64"] },
-        { "target": "dir", "arch": ["arm64"] }
+        { "target": "zip", "arch": ["arm64", "x64"] },
+        { "target": "dir", "arch": ["arm64", "x64"] }
       ]
     },
     "asarUnpack": [
-      "node_modules/tsx/**/*",
       "node_modules/@anthropic-ai/**/*"
     ]
   }

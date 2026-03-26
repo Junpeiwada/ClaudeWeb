@@ -15,7 +15,7 @@ const IPHONE = {
 
 // Mock repos
 const MOCK_REPOS = [
-  { id: "ClaudeWeb", name: "ClaudeWeb", path: "/Project/ClaudeWeb" },
+  { id: "AgentNest", name: "AgentNest", path: "/Project/AgentNest" },
   { id: "VideoViewer", name: "VideoViewer", path: "/Project/VideoViewer" },
   { id: "Vidspire", name: "Vidspire", path: "/Project/Vidspire" },
   { id: "blog", name: "blog", path: "/Project/blog" },
@@ -24,7 +24,7 @@ const MOCK_REPOS = [
   { id: "VideoScope", name: "VideoScope", path: "/Project/VideoScope" },
 ];
 
-// Mock files for ClaudeWeb root
+// Mock files for AgentNest root
 const MOCK_ROOT_FILES = [
   { name: "Docs", path: "Docs", type: "directory" },
   { name: "frontend", path: "frontend", type: "directory" },
@@ -39,17 +39,17 @@ const MOCK_ROOT_FILES = [
 
 // Mock files for Docs directory
 const MOCK_DOCS_FILES = [
-  { name: "ClaudeWeb仕様.md", path: "Docs/ClaudeWeb仕様.md", type: "file", size: 9164, extension: ".md" },
+  { name: "AgentNest仕様.md", path: "Docs/AgentNest仕様.md", type: "file", size: 9164, extension: ".md" },
   { name: "web画面.md", path: "Docs/web画面.md", type: "file", size: 10423, extension: ".md" },
   { name: "実装計画.md", path: "Docs/実装計画.md", type: "file", size: 5049, extension: ".md" },
 ];
 
 // Specification file content (excerpt for beautiful screenshot)
-const SPEC_CONTENT = `# ClaudeWeb 仕様書
+const SPEC_CONTENT = `# AgentNest 仕様書
 
 ## 概要
 
-ClaudeWeb は、ブラウザから Claude Code を操作する汎用 Web インターフェース。
+AgentNest は、ブラウザから Claude Code を操作する汎用 Web インターフェース。
 VSCode を使えないユーザーでも、ブラウザのチャット UI から Claude Code と対話的に作業できる。
 
 ### 想定ユースケース
@@ -72,7 +72,7 @@ VSCode を使えないユーザーでも、ブラウザのチャット UI から
 クライアント (iPhone Safari / PC ブラウザ)
   → Tailscale VPN
     → Mac (localhost:3000)
-      → ClaudeWeb サーバ (Express)
+      → AgentNest サーバ (Express)
         → Claude Code SDK (@anthropic-ai/claude-code)
           → 対象リポジトリのファイルシステムを直接操作
 \`\`\`
@@ -95,7 +95,7 @@ VSCode を使えないユーザーでも、ブラウザのチャット UI から
 
 \`\`\`
 ┌─────────────────────────────────────┐
-│ ClaudeWeb        [リポジトリ選択 ▼] │
+│ AgentNest        [リポジトリ選択 ▼] │
 ├─────────────────────────────────────┤
 │                                     │
 │  🤖 どのような作業をしますか？       │
@@ -147,8 +147,8 @@ async function selectRepo(page: import("@playwright/test").Page) {
   await trigger.click();
   await page.waitForTimeout(400);
 
-  // Click ClaudeWeb in the dropdown list (avoid the header title)
-  const dropdownItem = page.locator('[class*="MuiCollapse"] >> text=ClaudeWeb');
+  // Click AgentNest in the dropdown list (avoid the header title)
+  const dropdownItem = page.locator('[class*="MuiCollapse"] >> text=AgentNest');
   await dropdownItem.click();
   await page.waitForTimeout(600);
 }
@@ -215,7 +215,7 @@ test.describe("iPhone Screenshots", () => {
     await page.waitForTimeout(400);
 
     // Click spec file
-    await page.click("text=ClaudeWeb仕様.md");
+    await page.click("text=AgentNest仕様.md");
     await page.waitForTimeout(800);
 
     await page.screenshot({
@@ -242,12 +242,12 @@ test.describe("iPhone Screenshots", () => {
           `data: ${JSON.stringify({
             type: "tool_result",
             toolName: "Bash",
-            content: "ls -la Docs/\ntotal 48\n-rw-r--r--  9164 ClaudeWeb仕様.md\n-rw-r--r-- 10423 web画面.md\n-rw-r--r--  5049 実装計画.md",
+            content: "ls -la Docs/\ntotal 48\n-rw-r--r--  9164 AgentNest仕様.md\n-rw-r--r-- 10423 web画面.md\n-rw-r--r--  5049 実装計画.md",
           })}`,
           `data: ${JSON.stringify({
             type: "text",
             content:
-              "プロジェクトの構成を確認しました。\n\n**ClaudeWeb**はブラウザから Claude Code を操作するWebアプリです：\n\n- `frontend/` — React + Vite UI\n- `server/` — Express API + Claude Code SDK\n- `Docs/` — 仕様書・設計ドキュメント\n\n何か変更しますか？",
+              "プロジェクトの構成を確認しました。\n\n**AgentNest**はブラウザから Claude Code を操作するWebアプリです：\n\n- `frontend/` — React + Vite UI\n- `server/` — Express API + Claude Code SDK\n- `Docs/` — 仕様書・設計ドキュメント\n\n何か変更しますか？",
           })}`,
           `data: ${JSON.stringify({ type: "done", sessionId: "s1" })}`
         );
@@ -268,7 +268,7 @@ test.describe("iPhone Screenshots", () => {
     await selectRepo(page);
 
     // Type and send message
-    const textarea = page.getByRole("textbox", { name: "Message ClaudeWeb..." });
+    const textarea = page.getByRole("textbox", { name: "Message AgentNest..." });
     await textarea.tap();
     await textarea.fill("プロジェクトの構成を教えて");
     await page.waitForTimeout(200);

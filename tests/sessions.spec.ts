@@ -132,7 +132,7 @@ test.describe("Session history", () => {
     await expect(page.getByText("テストを追加しました。")).toBeVisible();
 
     // User can send a new message to continue the session
-    const input = page.getByPlaceholder("Message ClaudeWeb...");
+    const input = page.getByPlaceholder("Message AgentNest...");
     await input.fill("もう一つ修正して");
     await input.press("Enter");
 

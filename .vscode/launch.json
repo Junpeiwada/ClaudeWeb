@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "compounds": [
     {
-      "name": "ClaudeWeb Dev",
+      "name": "AgentNest Dev",
       "configurations": ["Server", "Frontend"],
       "stopAll": true
     }
@@ -38,7 +38,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "ClaudeWeb Production",
+      "name": "AgentNest Production",
       "type": "node",
       "request": "launch",
       "preLaunchTask": "build-frontend",

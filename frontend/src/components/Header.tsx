@@ -78,7 +78,7 @@ export default function Header({ repoId, onRepoChange, onNewChat, onResumeSessio
             display: { xs: "none", sm: "block" },
           }}
         >
-          ClaudeWeb
+          AgentNest
         </Typography>
       </Box>
 

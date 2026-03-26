@@ -128,8 +128,8 @@ test.describe("Tab switching", () => {
     await page.goto("/");
     await selectRepo(page);
 
-    // Chat input should be visible (after selecting repo, placeholder becomes "Message ClaudeWeb...")
-    await expect(page.getByPlaceholder("Message ClaudeWeb...")).toBeVisible();
+    // Chat input should be visible (after selecting repo, placeholder becomes "Message AgentNest...")
+    await expect(page.getByPlaceholder("Message AgentNest...")).toBeVisible();
   });
 
   test("switching to files tab shows file explorer", async ({ page }) => {
@@ -153,7 +153,7 @@ test.describe("Tab switching", () => {
     await expect(page.getByText("README.md")).toBeVisible();
 
     await switchToChatTab(page);
-    await expect(page.getByPlaceholder("Message ClaudeWeb...")).toBeVisible();
+    await expect(page.getByPlaceholder("Message AgentNest...")).toBeVisible();
   });
 });
 
@@ -382,6 +382,6 @@ test.describe("File viewer", () => {
     await page.locator("button.MuiFab-root").click();
 
     // Should switch to chat tab
-    await expect(page.getByPlaceholder("Message ClaudeWeb...")).toBeVisible();
+    await expect(page.getByPlaceholder("Message AgentNest...")).toBeVisible();
   });
 });

@@ -32,7 +32,7 @@ async function selectRepo(page: Page) {
 
 /** Type a message and send it */
 async function sendMessage(page: Page, message: string) {
-  const input = page.getByPlaceholder("Message ClaudeWeb...");
+  const input = page.getByPlaceholder("Message AgentNest...");
   await input.fill(message);
   await input.press("Enter");
 }
@@ -217,7 +217,7 @@ test.describe("Reconnection", () => {
 
     // After all retries fail, the failure message should appear
     await expect(
-      page.getByText("Connection lost. Reconnection failed.")
+      page.getByText("サーバーに接続できません。サーバーが起動しているか確認してください。")
     ).toBeVisible({ timeout: 15000 });
   });
 

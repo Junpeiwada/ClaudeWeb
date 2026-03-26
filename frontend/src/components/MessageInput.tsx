@@ -219,7 +219,7 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading }: Pr
 
         <InputBase
           fullWidth
-          placeholder={disabled && !isLoading ? "リポジトリを選択してください" : "Message ClaudeWeb..."}
+          placeholder={disabled && !isLoading ? "リポジトリを選択してください" : "Message AgentNest..."}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {

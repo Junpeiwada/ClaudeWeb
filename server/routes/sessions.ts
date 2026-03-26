@@ -9,7 +9,7 @@ const CLAUDE_DIR = join(homedir(), ".claude", "projects");
 
 /** Convert a repo path to the Claude Code session directory name */
 function encodeProjectPath(repoPath: string): string {
-  // e.g. /path/to/projects/ClaudeWeb → -path-to-projects-ClaudeWeb
+  // e.g. /path/to/projects/AgentNest → -path-to-projects-AgentNest
   return repoPath.replace(/\//g, "-");
 }
 

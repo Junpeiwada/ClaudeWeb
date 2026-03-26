@@ -28,13 +28,13 @@ export function createTray(
   }
 ): Tray {
   tray = new Tray(createTrayIcon());
-  tray.setToolTip("ClaudeWeb");
+  tray.setToolTip("AgentNest");
 
   const updateMenu = () => {
     const running = serverManager.running;
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: "ClaudeWeb を表示",
+        label: "AgentNest を表示",
         click: () => {
           mainWindow.show();
           mainWindow.focus();

@@ -1,6 +1,6 @@
 {
-  "name": "ClaudeWeb",
-  "short_name": "ClaudeWeb",
+  "name": "AgentNest",
+  "short_name": "AgentNest",
   "description": "Claude Code Web Interface",
   "start_url": "/",
   "display": "standalone",
