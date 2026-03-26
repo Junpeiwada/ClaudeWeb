@@ -256,6 +256,7 @@
         <span id="statusText">確認中...</span>
       </div>
       <div class="buttons" id="controlButtons"></div>
+      <div class="error-msg" id="statusError"></div>
     </div>
 
     <!-- Web UIリンク -->
@@ -334,6 +335,7 @@
     const inputPort = document.getElementById("inputPort");
     const inputAutoStart = document.getElementById("inputAutoStart");
     const formError = document.getElementById("formError");
+    const statusError = document.getElementById("statusError");
 
     // --- Render ---
     function render() {
@@ -342,6 +344,11 @@
       statusText.textContent = isRunning
         ? `起動中  Port: ${currentConfig.port}`
         : "停止中";
+
+      // 起動成功したらエラーをクリア
+      if (isRunning) {
+        statusError.textContent = "";
+      }
 
       // Buttons
       if (isRunning) {
@@ -389,11 +396,12 @@
         return;
       }
       isBusy = true;
+      statusError.textContent = "";
       render();
       try {
         await api.startServer();
       } catch (e) {
-        formError.textContent = "起動に失敗: " + e.message;
+        statusError.textContent = "起動に失敗: " + e.message;
       }
       isBusy = false;
       render();
@@ -402,11 +410,12 @@
     async function handleStop() {
       if (isBusy) return;
       isBusy = true;
+      statusError.textContent = "";
       render();
       try {
         await api.stopServer();
       } catch (e) {
-        formError.textContent = "停止に失敗: " + e.message;
+        statusError.textContent = "停止に失敗: " + e.message;
       }
       isBusy = false;
       render();
@@ -415,12 +424,13 @@
     async function handleRestart() {
       if (isBusy) return;
       isBusy = true;
+      statusError.textContent = "";
       render();
       try {
         await api.stopServer();
         await api.startServer();
       } catch (e) {
-        formError.textContent = "再起動に失敗: " + e.message;
+        statusError.textContent = "再起動に失敗: " + e.message;
       }
       isBusy = false;
       render();
@@ -508,6 +518,9 @@
     api.onServerStatusChange((status) => {
       isRunning = status.running;
       if (status.port) currentConfig.port = status.port;
+      if (status.error) {
+        statusError.textContent = status.error;
+      }
       render();
     });
 

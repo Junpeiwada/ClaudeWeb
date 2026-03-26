@@ -5,6 +5,7 @@ import { EventEmitter } from "events";
 export interface ServerStatus {
   running: boolean;
   port: number;
+  error?: string;
 }
 
 export class ServerManager extends EventEmitter {
@@ -21,8 +22,10 @@ export class ServerManager extends EventEmitter {
     return this._port;
   }
 
+  private _lastError: string | undefined;
+
   getStatus(): ServerStatus {
-    return { running: this._running, port: this._port };
+    return { running: this._running, port: this._port, error: this._lastError };
   }
 
   start(baseDir: string, port: number, appRoot: string): Promise<void> {
@@ -32,6 +35,7 @@ export class ServerManager extends EventEmitter {
 
     this._port = port;
     this._stopping = false;
+    this._lastError = undefined;
 
     return new Promise((resolve, reject) => {
       let settled = false;
@@ -71,10 +75,13 @@ export class ServerManager extends EventEmitter {
           this._running = true;
           this.emit("status-change", this.getStatus());
           resolve();
-        } else if (message.type === "error" && !settled) {
-          settled = true;
-          clearTimeout(timeout);
-          reject(new Error(message.message || "Server error"));
+        } else if (message.type === "error") {
+          this._lastError = message.message || "Server error";
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeout);
+            reject(new Error(this._lastError));
+          }
         }
       });
 
@@ -93,12 +100,15 @@ export class ServerManager extends EventEmitter {
         clearTimeout(timeout);
         this._running = false;
         this.serverProcess = null;
+        // 異常終了時、IPCエラーが無ければ汎用メッセージを設定
+        if (code !== 0 && code !== null && code !== 143 && !this._stopping && !this._lastError) {
+          this._lastError = `サーバーが異常終了しました (code: ${code})`;
+        }
         this.emit("status-change", this.getStatus());
         if (!settled && !this._stopping) {
           settled = true;
-          reject(new Error(`Server exited before ready (code: ${code ?? "unknown"})`));
+          reject(new Error(this._lastError || `Server exited before ready (code: ${code ?? "unknown"})`));
         }
-        // SIGTERM(143)やstop()による終了はエラーとしない
         if (code !== 0 && code !== null && code !== 143 && !this._stopping) {
           this.emit("error", new Error(`Server exited with code ${code}`));
         }

@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import { execFileSync } from "child_process";
 import reposRouter from "./routes/repos.js";
 import statusRouter from "./routes/status.js";
 import chatRouter from "./routes/chat.js";
@@ -38,19 +39,27 @@ app.get("/{*path}", (_req, res) => {
   res.sendFile(path.join(frontendDist, "index.html"));
 });
 
-const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`AgentNest server running on http://0.0.0.0:${PORT}`);
-  // Electron子プロセスとして起動された場合、親に起動完了を通知
-  if (typeof process.send === "function") {
-    process.send({ type: "ready", port: PORT });
-  }
-});
+// errorイベントを先に登録し、listenの前にエラーを捕捉する
+const server = app.listen(PORT, "0.0.0.0");
 
 server.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code === "EADDRINUSE") {
-    console.error(`ポート ${PORT} は既に使用されています`);
+    let detail = `ポート ${PORT} は既に使用されています`;
+    try {
+      const out = execFileSync("lsof", ["-i", `:${PORT}`, "-sTCP:LISTEN", "-Fn", "-Fp"], { encoding: "utf-8" });
+      const pidMatch = out.match(/^p(\d+)$/m);
+      if (pidMatch) {
+        const pid = pidMatch[1];
+        let processName = "不明";
+        try {
+          processName = execFileSync("ps", ["-p", pid, "-o", "ucomm="], { encoding: "utf-8" }).trim();
+        } catch { /* ignore */ }
+        detail += ` (プロセス: ${processName}, PID: ${pid})`;
+      }
+    } catch { /* lsof失敗時は基本メッセージのみ */ }
+    console.error(detail);
     if (typeof process.send === "function") {
-      process.send({ type: "error", message: `ポート ${PORT} は既に使用されています` });
+      process.send({ type: "error", message: detail });
     }
   } else {
     console.error("サーバーエラー:", err.message);
@@ -59,4 +68,11 @@ server.on("error", (err: NodeJS.ErrnoException) => {
     }
   }
   process.exit(1);
+});
+
+server.on("listening", () => {
+  console.log(`AgentNest server running on http://0.0.0.0:${PORT}`);
+  if (typeof process.send === "function") {
+    process.send({ type: "ready", port: PORT });
+  }
 });
