@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
+use tokio::io::AsyncReadExt;
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
@@ -75,57 +76,51 @@ async fn wait_for_server(port: u16, timeout_secs: u64) -> Result<(), String> {
 }
 
 /// `server/index.ts` を含むプロジェクトルートを探す
-fn find_project_root(start: &std::path::Path) -> Option<std::path::PathBuf> {
-    let mut dir = start.to_path_buf();
-    for _ in 0..10 {
-        if dir.join("server").join("index.ts").exists() {
-            return Some(dir);
-        }
-        if dir.join("dist-server").join("index.js").exists() {
-            return Some(dir);
-        }
-        if !dir.pop() {
-            break;
-        }
+/// サーバーエントリポイント（dist-server/index.js または server/index.ts）を探す
+fn find_server_entry(base: &std::path::Path) -> Option<std::path::PathBuf> {
+    // バンドル済みJS（本番）を優先
+    let dist = base.join("dist-server").join("index.js");
+    if dist.exists() {
+        return Some(dist);
+    }
+    // 開発用TS
+    let dev = base.join("server").join("index.ts");
+    if dev.exists() {
+        return Some(dev);
     }
     None
 }
 
-/// サーバーのルートパスを決定する
-fn get_server_root(app: &AppHandle) -> std::path::PathBuf {
-    // 1. 実行バイナリの位置から上方向に探索
-    //    dev: src-tauri/target/release/agent-nest → 3つ上がプロジェクトルート
-    //    bundle: AgentNest.app/Contents/MacOS/agent-nest → appの外を探索
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(exe_dir) = exe.parent() {
-            if let Some(root) = find_project_root(exe_dir) {
-                return root;
-            }
+/// サーバーエントリポイントのパスを決定する
+fn get_server_entry(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+    // 1. Tauri Resources ディレクトリ（バンドル版: .app/Contents/Resources/dist-server/）
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        if let Some(entry) = find_server_entry(&resource_dir) {
+            return Ok(entry);
         }
     }
 
-    // 2. resource_dir から探索
-    if let Ok(resource_dir) = app.path().resource_dir() {
-        if let Some(root) = find_project_root(&resource_dir) {
-            return root;
+    // 2. 実行バイナリから上方向に探索（開発時: src-tauri/target/*/agent-nest）
+    if let Ok(exe) = std::env::current_exe() {
+        let mut dir = exe.clone();
+        for _ in 0..10 {
+            if !dir.pop() {
+                break;
+            }
+            if let Some(entry) = find_server_entry(&dir) {
+                return Ok(entry);
+            }
         }
     }
 
     // 3. カレントディレクトリ
     if let Ok(cwd) = std::env::current_dir() {
-        if let Some(root) = find_project_root(&cwd) {
-            return root;
+        if let Some(entry) = find_server_entry(&cwd) {
+            return Ok(entry);
         }
     }
 
-    // 4. ビルド時に埋め込まれたプロジェクトルート（/Applicationsへのインストール時用）
-    let build_root = std::path::PathBuf::from(env!("AGENTNEST_ROOT"));
-    if build_root.join("server").join("index.ts").exists() {
-        return build_root;
-    }
-
-    // フォールバック
-    std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("/"))
+    Err("サーバーエントリが見つかりません（dist-server/index.js または server/index.ts）".to_string())
 }
 
 pub async fn start_server(
@@ -143,27 +138,70 @@ pub async fn start_server(
     s.port = port;
     s.last_error = None;
 
-    let app_root = get_server_root(app);
-    let server_entry = app_root.join("server").join("index.ts");
-    let dist_server_entry = app_root.join("dist-server").join("index.js");
+    let entry = get_server_entry(app)?;
+    let entry_str = entry.to_string_lossy().to_string();
+    let entry_dir = entry.parent().unwrap().to_path_buf();
 
-    // 開発時はtsx（node_modules/.bin/tsx）、パッケージ版はnodeを使用
-    let local_tsx = app_root.join("node_modules").join(".bin").join("tsx");
-    let (cmd, args) = if server_entry.exists() {
+    // .ts → tsx で実行（開発）、.js → node で実行（バンドル版）
+    let is_ts = entry_str.ends_with(".ts");
+    let (cmd, args) = if is_ts {
+        // 開発時: ローカルtsx → PATHのtsx
+        let project_root = entry_dir.parent().unwrap_or(&entry_dir);
+        let local_tsx = project_root.join("node_modules").join(".bin").join("tsx");
         let tsx_cmd = if local_tsx.exists() {
             local_tsx.to_string_lossy().to_string()
         } else {
-            "tsx".to_string() // PATHにあれば使う
+            "tsx".to_string()
         };
-        (tsx_cmd, vec![server_entry.to_string_lossy().to_string()])
-    } else if dist_server_entry.exists() {
-        ("node".to_string(), vec![dist_server_entry.to_string_lossy().to_string()])
+        (tsx_cmd, vec![entry_str.clone()])
     } else {
-        return Err(format!(
-            "サーバーエントリが見つかりません: {} or {}",
-            server_entry.display(),
-            dist_server_entry.display()
-        ));
+        ("node".to_string(), vec![entry_str.clone()])
+    };
+
+    // macOSアプリバンドルから起動時はPATHが最小限のため、
+    // node等が見つかるようにPATHを補完する
+    let path_env = {
+        let system_path = std::env::var("PATH").unwrap_or_default();
+        let mut extra_paths: Vec<String> = Vec::new();
+        let home = std::env::var("HOME").unwrap_or_default();
+
+        // nvm のNode.jsバイナリ
+        let nvm_base = std::path::Path::new(&home).join(".nvm/versions/node");
+        if let Ok(entries) = std::fs::read_dir(&nvm_base) {
+            for entry in entries.flatten() {
+                let bin = entry.path().join("bin");
+                if bin.exists() {
+                    extra_paths.push(bin.to_string_lossy().to_string());
+                }
+            }
+        }
+
+        // Homebrew
+        for p in ["/opt/homebrew/bin", "/usr/local/bin"] {
+            if std::path::Path::new(p).exists() {
+                extra_paths.push(p.to_string());
+            }
+        }
+
+        if extra_paths.is_empty() {
+            system_path
+        } else {
+            extra_paths.push(system_path);
+            extra_paths.join(":")
+        }
+    };
+
+    // バンドル版の場合、NODE_PATH を設定してnode_modules内のSDKを解決
+    let node_path = if !is_ts {
+        Some(entry_dir.join("node_modules").to_string_lossy().to_string())
+    } else {
+        None
+    };
+
+    let working_dir = if is_ts {
+        entry_dir.parent().unwrap_or(&entry_dir).to_path_buf()
+    } else {
+        entry_dir.clone()
     };
 
     let mut command = Command::new(&cmd);
@@ -171,9 +209,14 @@ pub async fn start_server(
         .args(&args)
         .env("BASE_PROJECT_DIR", base_dir)
         .env("PORT", port.to_string())
-        .current_dir(&app_root)
+        .env("PATH", &path_env)
+        .current_dir(&working_dir)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
+
+    if let Some(np) = &node_path {
+        command.env("NODE_PATH", np);
+    }
 
     // 新しいプロセスグループを作成し、子プロセスツリー全体をkillできるようにする
     #[cfg(unix)]
@@ -184,9 +227,20 @@ pub async fn start_server(
         });
     }
 
-    let child = command
+    let mut child = command
         .spawn()
         .map_err(|e| format!("サーバー起動失敗: {} — コマンド: {} {:?}", e, cmd, args))?;
+
+    // stderrをバックグラウンドで収集（タイムアウト時のエラー詳細に使用）
+    let stderr_buf: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
+    if let Some(mut stderr) = child.stderr.take() {
+        let buf = Arc::clone(&stderr_buf);
+        tokio::spawn(async move {
+            let mut s = String::new();
+            let _ = stderr.read_to_string(&mut s).await;
+            *buf.lock().await = s;
+        });
+    }
 
     let pgid = child.id();
     s.process = Some(child);
@@ -200,8 +254,16 @@ pub async fn start_server(
             s.running = true;
             Ok(())
         }
-        Err(e) => {
-            // タイムアウト: プロセスグループごと停止
+        Err(_) => {
+            // タイムアウト: stderrを収集してからプロセスグループごと停止
+            sleep(Duration::from_millis(200)).await; // stderrが届くのを少し待つ
+            let stderr_output = stderr_buf.lock().await.clone();
+            let error_msg = if stderr_output.is_empty() {
+                format!("サーバー起動タイムアウト（15秒）\nコマンド: {} {:?}\n作業Dir: {}", cmd, args, working_dir.display())
+            } else {
+                format!("サーバー起動タイムアウト（15秒）\nコマンド: {} {:?}\n作業Dir: {}\nエラー出力:\n{}", cmd, args, working_dir.display(), stderr_output)
+            };
+
             let mut s = state.lock().await;
             #[cfg(unix)]
             if let Some(pgid) = s.pgid.take() {
@@ -213,8 +275,8 @@ pub async fn start_server(
                 let _ = child.kill().await;
             }
             s.running = false;
-            s.last_error = Some(e.clone());
-            Err(e)
+            s.last_error = Some(error_msg.clone());
+            Err(error_msg)
         }
     }
 }

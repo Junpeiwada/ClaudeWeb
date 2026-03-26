@@ -1,0 +1,65 @@
+/**
+ * サーバーコードをesbuildでバンドルし、dist-server/ に出力する。
+ * @anthropic-ai/claude-code はネイティブバイナリを含むため external にし、
+ * node_modules ごとコピーする。
+ */
+import { build } from "esbuild";
+import { cpSync, mkdirSync, rmSync, existsSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const root = resolve(__dirname, "..");
+const outDir = resolve(root, "dist-server");
+
+// クリーン
+if (existsSync(outDir)) {
+  rmSync(outDir, { recursive: true });
+}
+mkdirSync(outDir, { recursive: true });
+
+// 1. esbuild でサーバーコードをバンドル
+await build({
+  entryPoints: [resolve(root, "server/index.ts")],
+  bundle: true,
+  platform: "node",
+  target: "node18",
+  format: "esm",
+  outfile: resolve(outDir, "index.js"),
+  external: ["@anthropic-ai/claude-code"],
+  // CJS依存（dotenv等）がrequire()を使えるようにする
+  // package.jsonに"type":"module"があるのでこのバナーはESMとして解釈される
+  banner: {
+    js: `import { createRequire } from 'module'; const require = createRequire(import.meta.url);`,
+  },
+  define: {
+    "process.env.NODE_ENV": '"production"',
+  },
+});
+
+// nodeがESMとして読めるようにpackage.jsonを出力
+import { writeFileSync } from "fs";
+writeFileSync(resolve(outDir, "package.json"), JSON.stringify({ type: "module" }, null, 2));
+
+// 2. @anthropic-ai/claude-code をnode_modulesごとコピー
+const srcModules = resolve(root, "node_modules");
+const destModules = resolve(outDir, "node_modules");
+
+const packagesToCopy = [
+  "@anthropic-ai/claude-code",
+  "@img/sharp-darwin-arm64",  // macOS ARM64向けsharp
+];
+
+for (const pkg of packagesToCopy) {
+  const src = resolve(srcModules, pkg);
+  const dest = resolve(destModules, pkg);
+  if (existsSync(src)) {
+    mkdirSync(dirname(dest), { recursive: true });
+    cpSync(src, dest, { recursive: true });
+    console.log(`  コピー: ${pkg}`);
+  } else {
+    console.log(`  スキップ（未インストール）: ${pkg}`);
+  }
+}
+
+console.log("サーバービルド完了 → dist-server/");

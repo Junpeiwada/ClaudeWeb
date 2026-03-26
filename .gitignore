@@ -1,6 +1,7 @@
 .env
 node_modules/
 dist/
+dist-server/
 frontend/dist/
 *.tsbuildinfo
 logs/
