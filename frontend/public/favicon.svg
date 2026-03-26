@@ -1,36 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Head -->
-  <ellipse cx="32" cy="24" rx="18" ry="16" fill="#e85d75"/>
-  <!-- Eyes -->
-  <ellipse cx="25" cy="22" rx="4.5" ry="5" fill="white"/>
-  <ellipse cx="39" cy="22" rx="4.5" ry="5" fill="white"/>
-  <ellipse cx="26" cy="22" rx="2.2" ry="2.8" fill="#2d2d2d"/>
-  <ellipse cx="40" cy="22" rx="2.2" ry="2.8" fill="#2d2d2d"/>
-  <!-- Eye highlights -->
-  <circle cx="27" cy="21" r="0.8" fill="white"/>
-  <circle cx="41" cy="21" r="0.8" fill="white"/>
-  <!-- Mouth -->
-  <path d="M28 29 Q32 32 36 29" stroke="#c94060" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-  <!-- Tentacles -->
-  <path d="M16 34 Q8 42 6 52 Q5 56 9 54" stroke="#e85d75" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-  <path d="M20 36 Q14 46 10 56 Q8 60 12 58" stroke="#d94e68" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-  <path d="M26 38 Q22 48 20 58 Q19 62 23 60" stroke="#e85d75" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-  <path d="M32 39 Q32 50 32 58 Q32 62 36 60" stroke="#d94e68" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-  <path d="M38 38 Q42 48 44 58 Q45 62 41 60" stroke="#e85d75" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-  <path d="M44 36 Q50 46 54 56 Q56 60 52 58" stroke="#d94e68" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-  <path d="M48 34 Q56 42 58 52 Q59 56 55 54" stroke="#e85d75" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-  <!-- Suction cups (dots on tentacles) -->
-  <circle cx="9" cy="48" r="1.2" fill="#c94060"/>
-  <circle cx="12" cy="52" r="1.2" fill="#c94060"/>
-  <circle cx="22" cy="52" r="1.2" fill="#c94060"/>
-  <circle cx="21" cy="56" r="1.2" fill="#c94060"/>
-  <circle cx="32" cy="52" r="1.2" fill="#c94060"/>
-  <circle cx="33" cy="56" r="1.2" fill="#c94060"/>
-  <circle cx="43" cy="52" r="1.2" fill="#c94060"/>
-  <circle cx="44" cy="56" r="1.2" fill="#c94060"/>
-  <circle cx="53" cy="48" r="1.2" fill="#c94060"/>
-  <circle cx="55" cy="52" r="1.2" fill="#c94060"/>
-  <!-- Cheek blush -->
-  <ellipse cx="20" cy="28" rx="3" ry="1.8" fill="#f5a0b0" opacity="0.6"/>
-  <ellipse cx="44" cy="28" rx="3" ry="1.8" fill="#f5a0b0" opacity="0.6"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#C96442"/>
+      <stop offset="100%" stop-color="#D4845E"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <text x="32" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="600" fill="#fff">C</text>
 </svg>

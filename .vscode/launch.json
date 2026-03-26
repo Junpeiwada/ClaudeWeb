@@ -12,6 +12,7 @@
       "name": "Server",
       "type": "node",
       "request": "launch",
+      "preLaunchTask": "build-frontend",
       "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
       "args": ["watch", "server/index.ts"],
       "cwd": "${workspaceFolder}",
