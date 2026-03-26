@@ -24,7 +24,7 @@ VERSION=$(node -p "require('./package.json').version")
 echo "リリースバージョン: v${VERSION}"
 
 # 2. バージョン変更をコミット & タグ
-git add package.json
+git add package.json package-lock.json
 git commit -m "リリース: v${VERSION}"
 git tag "v${VERSION}"
 
