@@ -62,7 +62,12 @@ npm run build
 echo "=== Tauriビルド ==="
 npx tauri build
 
-# 5. GitHub Releasesへ公開
+# 5. git push（タグをリリース前にpush）
+echo "=== git push ==="
+git push origin "${BRANCH}"
+git push origin "v${VERSION}"
+
+# 6. GitHub Releasesへ公開
 echo "=== GitHub Releasesへ公開 ==="
 BUNDLE_DIR="src-tauri/target/release/bundle"
 
@@ -108,12 +113,7 @@ JSONEOF
 gh release upload "v${VERSION}" "$BUNDLE_DIR/macos/latest.json"
 echo "latest.jsonをアップロード"
 
-# 6. git push
-echo "=== git push ==="
-git push origin "${BRANCH}"
-git push origin "v${VERSION}"
-
-# 7. draftリリースを公開
+# 9. draftリリースを公開
 echo "=== リリースを公開 ==="
 gh release edit "v${VERSION}" --draft=false
 
