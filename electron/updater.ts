@@ -1,5 +1,6 @@
 import { autoUpdater } from "electron-updater";
 import { app, BrowserWindow, ipcMain } from "electron";
+import { setIsQuitting } from "./main";
 import path from "path";
 import fs from "fs";
 
@@ -13,6 +14,7 @@ type UpdateStatus =
   | { state: "error"; message: string };
 
 let updateStatus: UpdateStatus = { state: "idle" };
+let initialized = false;
 
 function getGhToken(): string {
   try {
@@ -32,42 +34,13 @@ function notifyRenderer(): void {
   });
 }
 
-/** IPCハンドラーを登録（パッケージ版でなくても常に登録） */
-export function registerUpdaterHandlers(): void {
-  ipcMain.handle("get-app-version", () => app.getVersion());
-
-  ipcMain.handle("check-for-update", async () => {
-    if (!app.isPackaged) {
-      return { state: "error", message: "開発モードでは更新チェックできません" };
-    }
-    try {
-      updateStatus = { state: "checking" };
-      notifyRenderer();
-      const result = await autoUpdater.checkForUpdates();
-      // autoUpdater のイベントで状態が更新される
-      return updateStatus;
-    } catch (err) {
-      updateStatus = { state: "error", message: String(err) };
-      notifyRenderer();
-      return updateStatus;
-    }
-  });
-
-  ipcMain.handle("install-update", () => {
-    autoUpdater.quitAndInstall();
-  });
-
-  ipcMain.handle("get-update-status", () => updateStatus);
-}
-
-/** 自動更新を初期化（パッケージ版のみ） */
-export function initializeAutoUpdater(): void {
-  if (!app.isPackaged) return;
+function ensureInitialized(): boolean {
+  if (initialized) return true;
 
   const ghToken = getGhToken();
   if (!ghToken) {
     console.log("GH_TOKENが未設定のため自動更新を無効化");
-    return;
+    return false;
   }
 
   process.env["GH_TOKEN"] = ghToken;
@@ -93,7 +66,6 @@ export function initializeAutoUpdater(): void {
   autoUpdater.on("update-downloaded", (info) => {
     updateStatus = { state: "downloaded", version: info.version };
     notifyRenderer();
-    console.log(`更新ダウンロード完了: v${info.version}`);
   });
 
   autoUpdater.on("update-not-available", () => {
@@ -107,7 +79,46 @@ export function initializeAutoUpdater(): void {
     console.error("自動更新エラー:", err.message);
   });
 
-  // 起動時に自動チェック
+  initialized = true;
+  return true;
+}
+
+/** IPCハンドラーを登録（パッケージ版でなくても常に登録） */
+export function registerUpdaterHandlers(): void {
+  ipcMain.handle("get-app-version", () => app.getVersion());
+
+  ipcMain.handle("check-for-update", async () => {
+    if (!app.isPackaged) {
+      return { state: "error", message: "開発モードでは更新チェックできません" };
+    }
+    if (!ensureInitialized()) {
+      return { state: "error", message: "GH_TOKENが未設定です" };
+    }
+    try {
+      updateStatus = { state: "checking" };
+      notifyRenderer();
+      await autoUpdater.checkForUpdates();
+      return updateStatus;
+    } catch (err) {
+      updateStatus = { state: "error", message: String(err) };
+      notifyRenderer();
+      return updateStatus;
+    }
+  });
+
+  ipcMain.handle("install-update", () => {
+    setIsQuitting();
+    autoUpdater.quitAndInstall();
+  });
+
+  ipcMain.handle("get-update-status", () => updateStatus);
+}
+
+/** 自動更新を初期化（パッケージ版のみ） */
+export function initializeAutoUpdater(): void {
+  if (!app.isPackaged) return;
+  if (!ensureInitialized()) return;
+
   autoUpdater.checkForUpdates().catch((err) => {
     console.error("更新チェック失敗:", err.message);
   });

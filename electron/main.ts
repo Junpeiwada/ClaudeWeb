@@ -12,6 +12,10 @@ const serverManager = new ServerManager();
 let mainWindow: BrowserWindow | null = null;
 let isQuitting = false;
 
+export function setIsQuitting(): void {
+  isQuitting = true;
+}
+
 function getAppRoot(): string {
   if (app.isPackaged) {
     return app.getAppPath();
