@@ -1,10 +1,9 @@
 import { Router } from "express";
 import { readdir, stat } from "fs/promises";
 import path from "path";
+import { BASE_DIR } from "../config.js";
 
 const router = Router();
-
-const BASE_DIR = "$BASE_PROJECT_DIR";
 
 router.get("/api/repos", async (_req, res) => {
   try {

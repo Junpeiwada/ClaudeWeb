@@ -2,15 +2,14 @@ import { Router } from "express";
 import { readdir, readFile, stat } from "fs/promises";
 import { join } from "path";
 import { homedir } from "os";
+import { BASE_DIR } from "../config.js";
 
 const router = Router();
-
-const BASE_DIR = "$BASE_PROJECT_DIR";
 const CLAUDE_DIR = join(homedir(), ".claude", "projects");
 
 /** Convert a repo path to the Claude Code session directory name */
 function encodeProjectPath(repoPath: string): string {
-  // $BASE_PROJECT_DIR/ClaudeWeb → -Users-junpeiwada-Documents-Project-ClaudeWeb
+  // e.g. /path/to/projects/ClaudeWeb → -path-to-projects-ClaudeWeb
   return repoPath.replace(/\//g, "-");
 }
 

@@ -132,15 +132,15 @@ data: {"type": "done", "sessionId": "abc-123"}
 
 ### `GET /api/repos`
 
-`$BASE_PROJECT_DIR/` 直下のディレクトリ一覧を動的に取得して返す。
+`BASE_PROJECT_DIR` 環境変数で指定されたディレクトリ直下のディレクトリ一覧を動的に取得して返す。
 設定ファイルによる静的定義は不要。
 
 **レスポンス:**
 ```json
 [
-  { "id": "blog", "name": "blog", "path": "$BASE_PROJECT_DIR/blog" },
-  { "id": "PID", "name": "PID", "path": "$BASE_PROJECT_DIR/PID" },
-  { "id": "ClaudeWeb", "name": "ClaudeWeb", "path": "$BASE_PROJECT_DIR/ClaudeWeb" }
+  { "id": "blog", "name": "blog", "path": "/path/to/projects/blog" },
+  { "id": "PID", "name": "PID", "path": "/path/to/projects/PID" },
+  { "id": "ClaudeWeb", "name": "ClaudeWeb", "path": "/path/to/projects/ClaudeWeb" }
 ]
 ```
 
@@ -164,9 +164,10 @@ data: {"type": "done", "sessionId": "abc-123"}
 
 ### ベースディレクトリ
 
-選択可能なリポジトリは `$BASE_PROJECT_DIR/` 直下のディレクトリに限定される。
+選択可能なリポジトリは `BASE_PROJECT_DIR` 環境変数で指定されたディレクトリ直下に限定される。
 サーバ起動時にこのパス配下のディレクトリを動的にスキャンし、リポジトリ一覧を生成する。
 
+- `.env` ファイルに `BASE_PROJECT_DIR=/path/to/your/projects` を設定（`.env.example` を参照）
 - 静的な `config.json` でのリポジトリ定義は不要
 - ポート番号等の設定は環境変数または起動引数で指定（デフォルト: 3000）
 

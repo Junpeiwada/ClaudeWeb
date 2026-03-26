@@ -80,5 +80,5 @@ cd frontend && npm run lint
 - セッション状態はサーバーのインメモリ変数 `currentSession` で管理（シングルユーザー前提）
 - 開発時はViteプロキシ（`/api` → `localhost:3000`）でCORS回避
 - プロダクションではExpressがフロントエンドの静的ファイルも配信
-- リポジトリのベースパスは `$BASE_PROJECT_DIR` にハードコード
+- リポジトリのベースパスは環境変数 `BASE_PROJECT_DIR`（`.env`）で設定
 - テストはAPIモックベース（`page.route()` でSSEレスポンスをモック）

@@ -1,11 +1,9 @@
 import { Router } from "express";
 import { executeChat } from "../claude/executor.js";
 import { expandSlashCommand } from "../claude/commandExpander.js";
+import { BASE_DIR } from "../config.js";
 
 const router = Router();
-
-// In-memory repo path lookup (populated by repos route)
-const BASE_DIR = "$BASE_PROJECT_DIR";
 
 router.post("/api/chat", async (req, res) => {
   const { message, repoId, sessionId, autoEdit, images } = req.body;
