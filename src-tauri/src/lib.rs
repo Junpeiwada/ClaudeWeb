@@ -75,6 +75,16 @@ pub fn run() {
             get_app_version,
         ])
         .setup(|app| {
+            // 保存済みウィンドウ位置を復元
+            let cfg = config::load_config(app.handle());
+            if let Some(bounds) = &cfg.window_bounds {
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.set_position(tauri::Position::Physical(
+                        tauri::PhysicalPosition::new(bounds.x, bounds.y),
+                    ));
+                }
+            }
+
             // トレイ作成
             tray::create_tray(app.handle())?;
 
@@ -106,10 +116,26 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // ウィンドウを閉じてもhideにする（トレイに残す）
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    // ウィンドウ位置を保存してからhide
+                    if let Ok(pos) = window.outer_position() {
+                        if let Ok(size) = window.outer_size() {
+                            let app = window.app_handle();
+                            let mut cfg = config::load_config(app);
+                            cfg.window_bounds = Some(config::WindowBounds {
+                                x: pos.x,
+                                y: pos.y,
+                                width: size.width,
+                                height: size.height,
+                            });
+                            let _ = config::save_config(app, &cfg);
+                        }
+                    }
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+                _ => {}
             }
         })
         .build(tauri::generate_context!())
