@@ -7,6 +7,7 @@ logs/
 debug.log
 test-results/
 dist-electron/
+dist-server/
 release/
 build/icon.iconset/
 build/icon.svg
