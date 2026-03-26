@@ -52,6 +52,15 @@ export default function App() {
     localStorage.setItem("claudeweb-auto-edit", String(value));
   };
 
+  const handleRepoChange = useCallback((newRepoId: string) => {
+    setRepoId(newRepoId);
+    // リポジトリ変更時にセッション関連の状態をリセット
+    setSessionId(null);
+    setInitialMessages([]);
+    setInitialSessionId(null);
+    setChatKey((k) => k + 1);
+  }, []);
+
   const handleResumeSession = useCallback(
     async (selectedSessionId: string) => {
       try {
@@ -88,7 +97,7 @@ export default function App() {
       <CssBaseline />
       <Header
         repoId={repoId}
-        onRepoChange={setRepoId}
+        onRepoChange={handleRepoChange}
         onNewChat={handleNewChat}
         onResumeSession={handleResumeSession}
         sessionId={sessionId}

@@ -1,0 +1,90 @@
+# ClaudeWeb
+
+ブラウザから Claude Code を操作する Web インターフェース。
+VSCode がなくても、iPhone や PC のブラウザから Claude Code の全機能を利用できます。
+
+<p align="center">
+  <img src="screenshots/01-welcome.png" width="260" alt="ウェルカム画面" />
+  <img src="screenshots/04-chat.png" width="260" alt="チャット画面" />
+  <img src="screenshots/03-spec-viewer.png" width="260" alt="ファイルビューア" />
+</p>
+
+## 特徴
+
+- **チャット UI** — Claude Code とリアルタイム対話（SSE ストリーミング）
+- **リポジトリ選択** — 複数プロジェクトを切り替えて操作
+- **ファイルブラウザ** — コード・Markdown・画像をブラウザ上でプレビュー
+- **画像添付** — ペースト / ドラッグ&ドロップで画像を送信
+- **権限管理** — ファイル書き込み等の操作を承認/拒否するダイアログ
+- **セッション管理** — 会話履歴の保存・再開
+- **iPhone 最適化** — キーボード検出・セーフエリア対応のレスポンシブ UI
+
+## 技術スタック
+
+| レイヤー | 技術 |
+|---------|------|
+| フロントエンド | React 19 + Vite + MUI |
+| バックエンド | Express.js + TypeScript |
+| AI エンジン | Claude Code SDK (`@anthropic-ai/claude-code`) |
+| リアルタイム通信 | Server-Sent Events (SSE) |
+| テスト | Playwright |
+
+## セットアップ
+
+```bash
+npm install
+cd frontend && npm install && cd ..
+```
+
+## 使い方
+
+### 開発モード
+
+```bash
+npm run dev
+```
+
+サーバ（port 3000）とフロントエンド（port 5173）が同時に起動します。
+
+### プロダクション
+
+```bash
+npm run build
+npm start
+```
+
+### テスト
+
+```bash
+npm test           # Playwright E2E テスト
+npm run test:ui    # Playwright UI モード
+```
+
+## 想定ユースケース
+
+- **ブログ記事投稿** — iPhone から写真 URL を送り、記事を生成・公開
+- **仕様書生成** — コードや DB 定義から画面仕様書を自動生成
+- **汎用開発** — 任意のリポジトリに対して Claude Code を実行
+
+## 利用環境
+
+ローカルマシン（macOS）でサーバを起動し、Tailscale VPN 経由で外部からアクセスする構成を想定しています。Claude Code の Max サブスクリプションが必要です。
+
+## プロジェクト構成
+
+```
+ClaudeWeb/
+├── frontend/          # React + Vite UI
+│   └── src/
+│       ├── components/   # Chat, FileExplorer, Header, etc.
+│       └── hooks/        # useChat (SSE + state管理)
+├── server/            # Express API
+│   ├── routes/           # chat, repos, sessions, files, permission
+│   └── claude/           # Claude Code SDK ラッパー
+├── tests/             # Playwright E2E テスト
+└── Docs/              # 仕様書・設計ドキュメント
+```
+
+## ライセンス
+
+Private

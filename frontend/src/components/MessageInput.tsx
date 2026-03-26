@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Box, IconButton, InputBase } from "@mui/material";
 import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
 import StopRoundedIcon from "@mui/icons-material/StopRounded";
@@ -34,7 +34,36 @@ function parseDataUrl(dataUrl: string): { data: string; mediaType: string } {
 export default function MessageInput({ onSend, onStop, disabled, isLoading }: Props) {
   const [text, setText] = useState("");
   const [images, setImages] = useState<ImageAttachment[]>([]);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // visualViewportを使用したキーボード検出とセーフエリア調整
+  useEffect(() => {
+    const handleViewportChange = () => {
+      if (window.visualViewport && isInputFocused) {
+        const keyboardHeight = window.innerHeight - window.visualViewport.height;
+        const hasKeyboard = keyboardHeight > 50; // 50px以上の差があればキーボード表示と判定
+
+        // CSS変数を設定してキーボード表示状態を通知
+        document.documentElement.style.setProperty(
+          '--keyboard-visible',
+          hasKeyboard ? '1' : '0'
+        );
+      }
+    };
+
+    if (isInputFocused) {
+      window.visualViewport?.addEventListener('resize', handleViewportChange);
+      handleViewportChange(); // 初回実行
+    }
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleViewportChange);
+      if (!isInputFocused) {
+        document.documentElement.style.setProperty('--keyboard-visible', '0');
+      }
+    };
+  }, [isInputFocused]);
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
     const fileArray = Array.from(files).filter(
@@ -200,9 +229,18 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading }: Pr
             }
           }}
           onPaste={handlePaste}
+          onFocus={() => setIsInputFocused(true)}
+          onBlur={() => setIsInputFocused(false)}
           disabled={disabled}
           multiline
           maxRows={6}
+          inputProps={{
+            autoComplete: 'off',
+            autoCorrect: 'off',
+            autoCapitalize: 'off',
+            spellCheck: false,
+            'data-form-type': 'other',
+          }}
           sx={{
             fontSize: "14.5px",
             lineHeight: 1.5,

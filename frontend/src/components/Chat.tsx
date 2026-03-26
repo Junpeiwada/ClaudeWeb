@@ -57,7 +57,11 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
           maxWidth: "var(--max-width)",
           mx: "auto",
           px: { xs: 1, sm: 2 },
-          pb: { xs: "calc(12px + env(safe-area-inset-bottom))", sm: "calc(16px + env(safe-area-inset-bottom))" },
+          pb: {
+            xs: "calc(12px + env(safe-area-inset-bottom) * (1 - var(--keyboard-visible, 0)))",
+            sm: "calc(16px + env(safe-area-inset-bottom) * (1 - var(--keyboard-visible, 0)))"
+          },
+          transition: "padding-bottom 0.2s ease",
         }}
       >
         <ActivityIndicator activity={activity} isLoading={isLoading} />
