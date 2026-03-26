@@ -1,4 +1,8 @@
-# ClaudeWeb
+# AgentNest
+
+<p align="center">
+  <img src="screenshots/AgentNest.png" width="300" alt="AgentNest" />
+</p>
 
 ブラウザから Claude Code を操作する Web インターフェース。
 
@@ -82,7 +86,7 @@ npm run test:ui    # Playwright UI モード
 ## プロジェクト構成
 
 ```
-ClaudeWeb/
+AgentNest/
 ├── frontend/          # React + Vite UI
 │   └── src/
 │       ├── components/   # Chat, FileExplorer, Header, etc.
