@@ -10,7 +10,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
-const outDir = resolve(root, "dist-server");
+const outDir = resolve(root, "src-tauri", "dist-server");
 
 // クリーン
 if (existsSync(outDir)) {
