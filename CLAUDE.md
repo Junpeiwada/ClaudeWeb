@@ -14,13 +14,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev
 
 # サーバーのみ（tsx watch、ポート3000）
-npm run dev:server
+npm run 開発:サーバーのみ
 
 # フロントエンドのみ（Vite、ポート5173）
-npm run dev:frontend
+npm run 開発:フロントエンドのみ
+
+# Tauriアプリとして開発起動
+npm run 開発:Tauriアプリ
 
 # プロダクションビルド（フロントエンドのみ）
 npm run build
+
+# Tauriアプリビルド（署名付き）
+npm run ビルド:Tauriアプリ
+
+# ビルド→/Applicationsにインストール
+npm run ビルド:インストール
 
 # プロダクション起動（ビルド済みフロントエンド必須）
 npm start
@@ -29,7 +38,7 @@ npm start
 npm test
 
 # テスト（UI モード）
-npm run test:ui
+npm run テスト:UIモード
 
 # 単一テスト実行
 npx playwright test tests/chat.spec.ts
@@ -39,6 +48,37 @@ cd frontend && npm run lint
 ```
 
 **セットアップ**: `npm install && cd frontend && npm install`
+
+## リリース手順
+
+`npm run リリース`（`scripts/release.sh`）で自動リリースされる。
+
+### 前提条件
+- GitHub CLI（`gh`）が認証済み
+- Tauri署名秘密鍵が `~/.tauri/AgentNest.key` に配置済み（環境変数 `TAURI_SIGNING_PRIVATE_KEY` でも可）
+- Rust（cargo）がインストール済み
+
+### release.sh の処理フロー
+1. `npm version patch` でバージョンを自動インクリメント
+2. バージョン変更をコミット＆タグ作成
+3. フロントエンドビルド → Tauriビルド（署名付き）
+4. GitHub Releasesにdraftリリース作成
+5. DMG、`.app.tar.gz`（updater用）、`latest.json` をアップロード
+6. 現在のブランチとタグをpush
+7. リリースを公開
+8. 古いリリースを自動削除（最新のみ保持）
+
+### 自動更新の仕組み
+- Tauri updater プラグインが `https://github.com/Junpeiwada/AgentNest/releases/latest/download/latest.json` を参照
+- `latest.json` にはバージョン、署名、ダウンロードURLが含まれる
+- アプリ内の「更新を確認」ボタンで更新チェック→ダウンロード→再起動で適用
+- 署名検証あり（公開鍵は `src-tauri/tauri.conf.json` の `plugins.updater.pubkey`）
+
+### 署名キーの再生成（紛失時）
+```bash
+npx tauri signer generate -w ~/.tauri/AgentNest.key
+```
+生成後、公開鍵（`.key.pub`）を `src-tauri/tauri.conf.json` の `pubkey` に設定すること。既存ユーザーは旧キーで署名されたバージョンから更新できなくなるため注意。
 
 ## アーキテクチャ
 
