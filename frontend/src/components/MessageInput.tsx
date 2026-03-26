@@ -253,7 +253,7 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading }: Pr
             },
           }}
         />
-        {isLoading ? (
+        {isLoading && !canSend ? (
           <IconButton
             onClick={onStop}
             size="small"

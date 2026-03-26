@@ -1,22 +1,32 @@
 import { Router } from "express";
-import { subscribeToSession } from "../claude/executor.js";
+import { subscribeToSession, log as serverLog } from "../claude/executor.js";
 
 const router = Router();
 
 router.get("/api/reconnect", (req, res) => {
+  serverLog("RECONNECT_ATTEMPT", { timestamp: new Date().toISOString() });
+
   const sub = subscribeToSession();
   if (!sub) {
+    serverLog("RECONNECT_NO_SESSION", "No active session found");
     res.status(404).json({ error: "No active session" });
     return;
   }
 
   const { session, addListener, unsubscribe } = sub;
 
+  serverLog("RECONNECT_OK", {
+    sessionId: session.sessionId,
+    completed: session.completed,
+    partsCount: session.assistantMessage.parts.length,
+  });
+
   // SSE headers
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
+  res.setTimeout(0); // SSE接続のタイムアウトを無効化
   res.flushHeaders();
 
   let connectionOpen = true;
@@ -25,7 +35,10 @@ router.get("/api/reconnect", (req, res) => {
     if (!connectionOpen) return;
     try {
       res.write(`data: ${JSON.stringify(data)}\n\n`);
-    } catch {}
+    } catch (err) {
+      serverLog("RECONNECT_WRITE_ERROR", { type: (data as any).type, error: String(err) });
+      connectionOpen = false;
+    }
   };
 
   // Send current state snapshot so the client can restore its UI
@@ -49,10 +62,16 @@ router.get("/api/reconnect", (req, res) => {
 
   const keepalive = setInterval(() => {
     if (!connectionOpen) return;
-    try { res.write(": keepalive\n\n"); } catch {}
+    try {
+      res.write(": keepalive\n\n");
+    } catch (err) {
+      serverLog("RECONNECT_KEEPALIVE_ERROR", { error: String(err) });
+      connectionOpen = false;
+    }
   }, 15_000);
 
   req.on("close", () => {
+    serverLog("RECONNECT_CLIENT_DISCONNECT", { sessionId: session.sessionId });
     connectionOpen = false;
     clearInterval(keepalive);
     unsubscribe();

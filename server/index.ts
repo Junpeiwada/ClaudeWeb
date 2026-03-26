@@ -76,3 +76,14 @@ server.on("listening", () => {
     process.send({ type: "ready", port: PORT });
   }
 });
+
+// サーバークラッシュ防止: 未処理のエラーをログして継続
+process.on("unhandledRejection", (reason) => {
+  console.error("[UNHANDLED_REJECTION]", reason);
+  process.exit(1);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[UNCAUGHT_EXCEPTION]", err);
+  process.exit(1);
+});

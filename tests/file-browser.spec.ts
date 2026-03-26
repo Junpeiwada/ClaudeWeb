@@ -350,7 +350,7 @@ test.describe("File viewer", () => {
 
     await page.getByText("index.ts").click();
 
-    await expect(page.getByText("ファイルを読み込めませんでした")).toBeVisible();
+    await expect(page.getByText("サーバーに接続できません")).toBeVisible();
   });
 
   test("shows message for binary/oversized file", async ({ page }) => {

@@ -33,7 +33,7 @@ async function cleanOldLogs(): Promise<void> {
   }
 }
 
-function log(label: string, data: unknown): void {
+export function log(label: string, data: unknown): void {
   const ts = new Date().toISOString();
   const line = `[${ts}] ${label}: ${typeof data === "string" ? data : JSON.stringify(data, null, 2)}\n`;
   appendFile(getLogFile(), line).catch(() => {});

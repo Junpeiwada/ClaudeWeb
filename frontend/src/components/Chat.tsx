@@ -24,6 +24,7 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
     pendingPermission,
     sendMessage,
     respondPermission,
+    stopGeneration,
   } = useChat(initialMessages, initialSessionId);
 
   // sessionId変更時に親に通知
@@ -36,8 +37,8 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
   }, [sessionId, onSessionIdChange]);
 
   const handleStop = useCallback(async () => {
-    await fetch("/api/interrupt", { method: "POST" });
-  }, []);
+    await stopGeneration();
+  }, [stopGeneration]);
 
   return (
     <Box
@@ -70,7 +71,7 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
         <MessageInput
           onSend={(msg, images) => sendMessage(msg, repoId, autoEdit, images)}
           onStop={handleStop}
-          disabled={isLoading || !repoId || !!pendingPermission}
+          disabled={!repoId || !!pendingPermission}
           isLoading={isLoading}
         />
       </Box>

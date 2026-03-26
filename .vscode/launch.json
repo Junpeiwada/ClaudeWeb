@@ -30,7 +30,7 @@
       "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
       "args": ["watch", "server/index.ts"],
       "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal"
+      "console": "internalConsole"
     },
     {
       "name": "Frontend",
@@ -39,7 +39,7 @@
       "runtimeExecutable": "npx",
       "args": ["vite", "--host"],
       "cwd": "${workspaceFolder}/frontend",
-      "console": "integratedTerminal"
+      "console": "internalConsole"
     }
   ]
 }

@@ -272,4 +272,217 @@ test.describe("Reconnection", () => {
       page.getByText("And more text after reconnect!")
     ).toBeVisible({ timeout: 10000 });
   });
+
+  test("reconnects when stream ends without done event (connection dropped silently)", async ({
+    page,
+  }) => {
+    await mockRepos(page);
+
+    // /api/chat: ストリームがdoneイベントなしで終了（接続が静かに切断されたケース）
+    await page.route("/api/chat", (route) => {
+      const body = sseBody([
+        { type: "session_id", sessionId: SESSION_ID },
+        { type: "text", content: "Partial response..." },
+        // done イベントなし — 接続が切れた
+      ]);
+      return route.fulfill({
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+        body,
+      });
+    });
+
+    // /api/reconnect: 状態を復元して完了
+    await page.route("/api/reconnect", (route) => {
+      const body = sseBody([
+        {
+          type: "reconnect_state",
+          sessionId: SESSION_ID,
+          assistantMessage: {
+            role: "assistant",
+            content: "Full recovered response after silent disconnect.",
+            parts: [{ type: "text", content: "Full recovered response after silent disconnect." }],
+            error: null,
+          },
+          pendingPermission: null,
+          completed: true,
+        },
+        { type: "done", sessionId: SESSION_ID },
+      ]);
+      return route.fulfill({
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+        body,
+      });
+    });
+
+    await page.goto("/");
+    await selectRepo(page);
+    await sendMessage(page, "Silent disconnect test");
+
+    // 再接続後に復元されたレスポンスが表示されるべき
+    await expect(
+      page.getByText("Full recovered response after silent disconnect.")
+    ).toBeVisible({ timeout: 10000 });
+  });
+
+  test("does not reconnect when error event is received without done", async ({
+    page,
+  }) => {
+    await mockRepos(page);
+
+    let reconnectCalled = false;
+
+    // /api/chat: errorイベントで終了（doneなし）
+    await page.route("/api/chat", (route) => {
+      const body = sseBody([
+        { type: "session_id", sessionId: SESSION_ID },
+        { type: "text", content: "Working..." },
+        { type: "error", error: "Something went wrong" },
+      ]);
+      return route.fulfill({
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+        body,
+      });
+    });
+
+    // /api/reconnect: 呼ばれないはず
+    await page.route("/api/reconnect", (route) => {
+      reconnectCalled = true;
+      return route.fulfill({
+        status: 404,
+        json: { error: "No active session" },
+      });
+    });
+
+    await page.goto("/");
+    await selectRepo(page);
+    await sendMessage(page, "Error test");
+
+    // エラーメッセージが表示されるべき
+    await expect(page.getByText("Something went wrong")).toBeVisible({
+      timeout: 5000,
+    });
+
+    // 再接続は試みられないべき
+    expect(reconnectCalled).toBe(false);
+  });
+
+  test("clears stale permission dialog when reconnect snapshot has null pendingPermission", async ({
+    page,
+  }) => {
+    await mockRepos(page);
+
+    await page.route("/api/chat", (route) => {
+      return route.fulfill({
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+        body: sseBody([
+          { type: "session_id", sessionId: SESSION_ID },
+          {
+            type: "permission",
+            toolName: "Read",
+            toolInput: { file_path: "README.md" },
+            requestId: "req-1",
+          },
+        ]),
+      });
+    });
+
+    await page.route("/api/reconnect", (route) => {
+      return route.fulfill({
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+        body: sseBody([
+          {
+            type: "reconnect_state",
+            sessionId: SESSION_ID,
+            assistantMessage: {
+              role: "assistant",
+              content: "Recovered after permission resolved",
+              parts: [{ type: "text", content: "Recovered after permission resolved" }],
+              error: null,
+            },
+            pendingPermission: null,
+            completed: true,
+          },
+          { type: "done", sessionId: SESSION_ID },
+        ]),
+      });
+    });
+
+    await page.goto("/");
+    await selectRepo(page);
+    await sendMessage(page, "Permission test");
+
+    await expect(
+      page.getByText("Recovered after permission resolved")
+    ).toBeVisible({ timeout: 10000 });
+
+    await expect(page.getByText("Permission Request")).not.toBeVisible();
+    await expect(page.getByPlaceholder("Message AgentNest...")).toBeEnabled();
+  });
+
+  test("retries reconnect when reconnect stream ends without completion", async ({
+    page,
+  }) => {
+    await mockRepos(page);
+
+    await page.route("/api/chat", (route) => route.abort("connectionreset"));
+
+    let reconnectCalls = 0;
+    await page.route("/api/reconnect", (route) => {
+      reconnectCalls++;
+      if (reconnectCalls === 1) {
+        return route.fulfill({
+          status: 200,
+          headers: { "Content-Type": "text/event-stream" },
+          body: sseBody([
+            {
+              type: "reconnect_state",
+              sessionId: SESSION_ID,
+              assistantMessage: {
+                role: "assistant",
+                content: "Partial reconnect snapshot",
+                parts: [{ type: "text", content: "Partial reconnect snapshot" }],
+                error: null,
+              },
+              pendingPermission: null,
+              completed: false,
+            },
+          ]),
+        });
+      }
+
+      return route.fulfill({
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+        body: sseBody([
+          {
+            type: "reconnect_state",
+            sessionId: SESSION_ID,
+            assistantMessage: {
+              role: "assistant",
+              content: "Recovered after reconnect retry",
+              parts: [{ type: "text", content: "Recovered after reconnect retry" }],
+              error: null,
+            },
+            pendingPermission: null,
+            completed: true,
+          },
+          { type: "done", sessionId: SESSION_ID },
+        ]),
+      });
+    });
+
+    await page.goto("/");
+    await selectRepo(page);
+    await sendMessage(page, "Reconnect retry test");
+
+    await expect(
+      page.getByText("Recovered after reconnect retry")
+    ).toBeVisible({ timeout: 10000 });
+    expect(reconnectCalls).toBe(2);
+  });
 });
