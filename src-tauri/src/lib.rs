@@ -141,18 +141,29 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
-            if let tauri::RunEvent::ExitRequested { ref api, .. } = event {
-                // macOS: 全ウィンドウ閉じてもアプリ終了しない
-                api.prevent_exit();
-            }
-
-            // Dockアイコンクリック時にウィンドウを再表示
-            #[cfg(target_os = "macos")]
-            if let tauri::RunEvent::Reopen { .. } = event {
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.show();
-                    let _ = win.set_focus();
+            match &event {
+                tauri::RunEvent::ExitRequested { ref api, code, .. } => {
+                    if code.is_none() {
+                        // ウィンドウが全て閉じた時のみ終了を防ぐ（トレイで常駐）
+                        // code が Some の場合は app.exit() からの明示的終了なので通す
+                        api.prevent_exit();
+                    }
                 }
+                tauri::RunEvent::Exit => {
+                    // アプリ終了時にサーバーを確実に停止
+                    let state = app.state::<SharedServerState>();
+                    tauri::async_runtime::block_on(async {
+                        let _ = server::stop_server(&state).await;
+                    });
+                }
+                #[cfg(target_os = "macos")]
+                tauri::RunEvent::Reopen { .. } => {
+                    if let Some(win) = app.get_webview_window("main") {
+                        let _ = win.show();
+                        let _ = win.set_focus();
+                    }
+                }
+                _ => {}
             }
         });
 }

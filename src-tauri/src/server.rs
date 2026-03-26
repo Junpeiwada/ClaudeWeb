@@ -15,6 +15,8 @@ pub struct ServerStatus {
 
 pub struct ServerState {
     process: Option<Child>,
+    /// プロセスグループID（子プロセスツリー全体のkillに使用）
+    pgid: Option<u32>,
     port: u16,
     running: bool,
     last_error: Option<String>,
@@ -24,6 +26,7 @@ impl ServerState {
     pub fn new() -> Self {
         Self {
             process: None,
+            pgid: None,
             port: 3000,
             running: false,
             last_error: None,
@@ -163,18 +166,31 @@ pub async fn start_server(
         ));
     };
 
-    let child = Command::new(&cmd)
+    let mut command = Command::new(&cmd);
+    command
         .args(&args)
         .env("BASE_PROJECT_DIR", base_dir)
         .env("PORT", port.to_string())
         .current_dir(&app_root)
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .kill_on_drop(true)
+        .stderr(std::process::Stdio::piped());
+
+    // 新しいプロセスグループを作成し、子プロセスツリー全体をkillできるようにする
+    #[cfg(unix)]
+    unsafe {
+        command.pre_exec(|| {
+            libc::setpgid(0, 0);
+            Ok(())
+        });
+    }
+
+    let child = command
         .spawn()
         .map_err(|e| format!("サーバー起動失敗: {} — コマンド: {} {:?}", e, cmd, args))?;
 
+    let pgid = child.id();
     s.process = Some(child);
+    s.pgid = pgid;
     drop(s); // ロック解放してからヘルスチェック
 
     // ヘルスチェックでサーバー起動を待つ
@@ -185,8 +201,14 @@ pub async fn start_server(
             Ok(())
         }
         Err(e) => {
-            // タイムアウト: プロセス停止
+            // タイムアウト: プロセスグループごと停止
             let mut s = state.lock().await;
+            #[cfg(unix)]
+            if let Some(pgid) = s.pgid.take() {
+                unsafe {
+                    libc::kill(-(pgid as i32), libc::SIGTERM);
+                }
+            }
             if let Some(mut child) = s.process.take() {
                 let _ = child.kill().await;
             }
@@ -197,17 +219,24 @@ pub async fn start_server(
     }
 }
 
+/// プロセスグループ全体にシグナルを送信してサーバーを停止する
 pub async fn stop_server(state: &SharedServerState) -> Result<(), String> {
     let mut s = state.lock().await;
 
-    if let Some(mut child) = s.process.take() {
-        // まずSIGTERMで優しく停止
-        let _ = child.kill().await;
-        s.running = false;
-        s.last_error = None;
-        Ok(())
-    } else {
-        s.running = false;
-        Ok(())
+    // プロセスグループ全体にSIGTERMを送信（tsx + node 等すべて停止）
+    #[cfg(unix)]
+    if let Some(pgid) = s.pgid.take() {
+        unsafe {
+            libc::kill(-(pgid as i32), libc::SIGTERM);
+        }
     }
+
+    if let Some(mut child) = s.process.take() {
+        // フォールバック: プロセスグループkillが効かなかった場合に備えて直接kill
+        let _ = child.kill().await;
+    }
+
+    s.running = false;
+    s.last_error = None;
+    Ok(())
 }
