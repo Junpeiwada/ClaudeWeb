@@ -53,7 +53,7 @@ export default function RepoSelector({ value, onChange }: Props) {
           borderRadius: "var(--radius-sm)",
           border: "1px solid var(--color-border)",
           cursor: "pointer",
-          minWidth: 140,
+          minWidth: { xs: 100, sm: 140 },
           transition: "all 0.15s ease",
           bgcolor: "var(--color-surface)",
           "&:hover": {

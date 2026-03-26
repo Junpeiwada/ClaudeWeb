@@ -43,7 +43,7 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading }: Pr
     >
       <InputBase
         fullWidth
-        placeholder="Message ClaudeWeb..."
+        placeholder={disabled && !isLoading ? "リポジトリを選択してください" : "Message ClaudeWeb..."}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {

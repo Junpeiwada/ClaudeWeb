@@ -5,14 +5,17 @@ import MessageInput from "./MessageInput";
 import ActivityIndicator from "./ActivityIndicator";
 import PermissionDialog from "./PermissionDialog";
 import { useChat } from "../hooks/useChat";
+import type { Message } from "../hooks/useChat";
 
 interface Props {
   repoId: string;
   autoEdit: boolean;
   onSessionIdChange?: (sessionId: string | null) => void;
+  initialMessages?: Message[];
+  initialSessionId?: string | null;
 }
 
-export default function Chat({ repoId, autoEdit, onSessionIdChange }: Props) {
+export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessages, initialSessionId }: Props) {
   const {
     messages,
     isLoading,
@@ -21,7 +24,7 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange }: Props) {
     pendingPermission,
     sendMessage,
     respondPermission,
-  } = useChat();
+  } = useChat(initialMessages, initialSessionId);
 
   // sessionId変更時に親に通知
   const prevSessionIdRef = useRef(sessionId);
@@ -44,7 +47,7 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange }: Props) {
         position: "relative",
       }}
     >
-      <MessageList messages={messages} isLoading={isLoading} />
+      <MessageList messages={messages} isLoading={isLoading} repoId={repoId} />
 
       {/* Bottom section: activity + input */}
       <Box

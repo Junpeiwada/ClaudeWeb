@@ -6,6 +6,8 @@ import reposRouter from "./routes/repos.js";
 import statusRouter from "./routes/status.js";
 import chatRouter from "./routes/chat.js";
 import permissionRouter from "./routes/permission.js";
+import reconnectRouter from "./routes/reconnect.js";
+import sessionsRouter from "./routes/sessions.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,6 +22,8 @@ app.use(reposRouter);
 app.use(statusRouter);
 app.use(chatRouter);
 app.use(permissionRouter);
+app.use(reconnectRouter);
+app.use(sessionsRouter);
 
 // Serve frontend static files in production
 const frontendDist = path.join(__dirname, "../frontend/dist");

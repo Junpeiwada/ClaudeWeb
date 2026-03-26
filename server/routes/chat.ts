@@ -26,13 +26,19 @@ router.post("/api/chat", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
+  let connectionOpen = true;
+
   const send = (data: object) => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (!connectionOpen) return;
+    try {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    } catch {}
   };
 
   // 15秒ごとにkeepaliveを送信（SSE接続維持）
   const keepalive = setInterval(() => {
-    res.write(": keepalive\n\n");
+    if (!connectionOpen) return;
+    try { res.write(": keepalive\n\n"); } catch {}
   }, 15_000);
 
   executeChat(prompt, repoId, repoPath, sessionId ?? null, autoEdit ?? true, {
@@ -44,6 +50,9 @@ router.post("/api/chat", async (req, res) => {
     },
     onToolResult: (result) => {
       send({ type: "tool_result", toolName: result.toolName, content: result.content });
+    },
+    onLimitError: (error) => {
+      send({ type: "limit_error", error });
     },
     onSessionId: (sessionId) => {
       send({ type: "session_id", sessionId });
@@ -59,19 +68,23 @@ router.post("/api/chat", async (req, res) => {
     onDone: (sid) => {
       clearInterval(keepalive);
       send({ type: "done", sessionId: sid });
-      res.end();
+      if (connectionOpen) {
+        try { res.end(); } catch {}
+      }
     },
     onError: (error) => {
       clearInterval(keepalive);
       send({ type: "error", error });
-      res.end();
+      if (connectionOpen) {
+        try { res.end(); } catch {}
+      }
     },
   });
 
-  // Handle client disconnect
+  // Handle client disconnect — session continues for reconnection
   req.on("close", () => {
+    connectionOpen = false;
     clearInterval(keepalive);
-    // Don't abort — allow session to continue for reconnection
   });
 });
 

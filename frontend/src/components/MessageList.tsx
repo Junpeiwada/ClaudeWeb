@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Box, Typography } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -7,57 +7,10 @@ import type { Message } from "../hooks/useChat";
 interface Props {
   messages: Message[];
   isLoading: boolean;
+  repoId?: string;
 }
 
-interface ToolResultSegment {
-  kind: "tool_result";
-  toolName: string;
-  content: string;
-}
-
-interface MarkdownSegment {
-  kind: "markdown";
-  content: string;
-}
-
-type ContentSegment = MarkdownSegment | ToolResultSegment;
-
-const TOOL_RESULT_PATTERN = /<!--TOOL_RESULT:(.*?)-->/gs;
-
-function parseAssistantContent(content: string): ContentSegment[] {
-  const segments: ContentSegment[] = [];
-  let lastIndex = 0;
-
-  for (const match of content.matchAll(TOOL_RESULT_PATTERN)) {
-    const [raw, payload] = match;
-    const start = match.index ?? 0;
-
-    if (start > lastIndex) {
-      segments.push({ kind: "markdown", content: content.slice(lastIndex, start) });
-    }
-
-    try {
-      const parsed = JSON.parse(decodeURIComponent(payload)) as { toolName?: string; content?: string };
-      segments.push({
-        kind: "tool_result",
-        toolName: parsed.toolName || "Tool",
-        content: parsed.content || "",
-      });
-    } catch {
-      segments.push({ kind: "markdown", content: raw });
-    }
-
-    lastIndex = start + raw.length;
-  }
-
-  if (lastIndex < content.length) {
-    segments.push({ kind: "markdown", content: content.slice(lastIndex) });
-  }
-
-  return segments.length > 0 ? segments : [{ kind: "markdown", content }];
-}
-
-export default function MessageList({ messages, isLoading }: Props) {
+export default function MessageList({ messages, isLoading, repoId }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -110,7 +63,7 @@ export default function MessageList({ messages, isLoading }: Props) {
             lineHeight: 1.6,
           }}
         >
-          How can I help you today?
+          {repoId ? "何かお手伝いできますか？" : "リポジトリを選択してください"}
         </Typography>
       </Box>
     );
@@ -145,7 +98,7 @@ export default function MessageList({ messages, isLoading }: Props) {
           ) : (
             <AssistantMessage
               key={i}
-              content={msg.content}
+              message={msg}
               isStreaming={isLoading && i === messages.length - 1}
             />
           )
@@ -186,13 +139,17 @@ function UserMessage({ content }: { content: string }) {
 }
 
 function AssistantMessage({
-  content,
+  message,
   isStreaming,
 }: {
-  content: string;
+  message: Message;
   isStreaming: boolean;
 }) {
-  if (!content && isStreaming) {
+  const parts = message.role === "assistant" ? message.parts ?? [] : [];
+  const fallbackContent = message.content;
+  const error = message.role === "assistant" ? message.error : null;
+
+  if (parts.length === 0 && !fallbackContent && !error && isStreaming) {
     return (
       <Box sx={{ display: "flex", gap: "4px", py: 1, animation: "fade-in-up 0.25s ease" }}>
         {[0, 1, 2].map((i) => (
@@ -305,14 +262,14 @@ function AssistantMessage({
           bgcolor: "var(--color-bg-secondary)",
           fontWeight: 600,
         },
-        "& details": {
+        "& .tool-result": {
           my: 1.5,
           border: "1px solid var(--color-border)",
           borderRadius: "var(--radius-md)",
           bgcolor: "var(--color-bg-secondary)",
           overflow: "hidden",
         },
-        "& summary": {
+        "& .tool-result summary": {
           cursor: "pointer",
           px: 1.5,
           py: 1,
@@ -321,21 +278,23 @@ function AssistantMessage({
           color: "var(--color-text-secondary)",
           userSelect: "none",
         },
-        "& details > div": {
+        "& .tool-result > div": {
           px: 1.5,
           pb: 1.5,
         },
       }}
     >
-      {parseAssistantContent(content).map((segment, index) => (
-        <Fragment key={index}>
-          {segment.kind === "markdown" ? (
-            segment.content.trim() ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{segment.content}</ReactMarkdown>
+      {parts.length > 0 ? (
+        parts.map((part, index) =>
+          part.type === "text" ? (
+            part.content.trim() ? (
+              <ReactMarkdown key={index} remarkPlugins={[remarkGfm]}>
+                {part.content}
+              </ReactMarkdown>
             ) : null
           ) : (
-            <details>
-              <summary>{segment.toolName} Result</summary>
+            <details key={index} className="tool-result">
+              <summary>{part.toolName ?? "Tool"} Result</summary>
               <Box component="div">
                 <Box
                   component="pre"
@@ -344,13 +303,51 @@ function AssistantMessage({
                     mt: 0.5,
                   }}
                 >
-                  <code>{segment.content}</code>
+                  <code>{part.content}</code>
                 </Box>
               </Box>
             </details>
-          )}
-        </Fragment>
-      ))}
+          )
+        )
+      ) : fallbackContent.trim() ? (
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{fallbackContent}</ReactMarkdown>
+      ) : null}
+      {error ? (
+        <Box
+          sx={{
+            mt: 1.5,
+            px: 1.5,
+            py: 1.25,
+            borderRadius: "var(--radius-md)",
+            border: "1px solid",
+            borderColor:
+              error.kind === "limit" ? "rgba(201, 100, 66, 0.28)" : "rgba(180, 87, 87, 0.24)",
+            bgcolor:
+              error.kind === "limit" ? "rgba(201, 100, 66, 0.08)" : "rgba(180, 87, 87, 0.08)",
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: "13px",
+              fontWeight: 600,
+              color: error.kind === "limit" ? "var(--color-accent)" : "#9F3E3E",
+              mb: 0.25,
+            }}
+          >
+            {error.kind === "limit" ? "Usage limit reached" : "Request failed"}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: "13.5px",
+              lineHeight: 1.6,
+              color: "var(--color-text-secondary)",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {error.message}
+          </Typography>
+        </Box>
+      ) : null}
     </Box>
   );
 }

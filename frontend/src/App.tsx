@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import Chat from "./components/Chat";
 import Header from "./components/Header";
+import type { Message } from "./hooks/useChat";
 
 const theme = createTheme({
   palette: {
@@ -36,6 +37,8 @@ export default function App() {
   const [repoId, setRepoId] = useState("");
   const [chatKey, setChatKey] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [initialMessages, setInitialMessages] = useState<Message[]>([]);
+  const [initialSessionId, setInitialSessionId] = useState<string | null>(null);
   const [autoEdit, setAutoEdit] = useState(
     () => localStorage.getItem("claudeweb-auto-edit") !== "false"
   );
@@ -45,16 +48,45 @@ export default function App() {
     localStorage.setItem("claudeweb-auto-edit", String(value));
   };
 
+  const handleResumeSession = useCallback(
+    async (selectedSessionId: string) => {
+      // Fetch past messages for the selected session
+      try {
+        const res = await fetch(
+          `/api/sessions/${encodeURIComponent(repoId)}/${selectedSessionId}/messages`
+        );
+        if (!res.ok) throw new Error();
+        const messages: Message[] = await res.json();
+        setInitialMessages(messages);
+        setInitialSessionId(selectedSessionId);
+        setSessionId(selectedSessionId);
+        setChatKey((k) => k + 1);
+      } catch {
+        // If fetch fails, still open with the session ID (no history shown)
+        setInitialMessages([]);
+        setInitialSessionId(selectedSessionId);
+        setSessionId(selectedSessionId);
+        setChatKey((k) => k + 1);
+      }
+    },
+    [repoId]
+  );
+
+  const handleNewChat = useCallback(() => {
+    setInitialMessages([]);
+    setInitialSessionId(null);
+    setSessionId(null);
+    setChatKey((k) => k + 1);
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Header
         repoId={repoId}
         onRepoChange={setRepoId}
-        onNewChat={() => {
-          setChatKey((k) => k + 1);
-          setSessionId(null);
-        }}
+        onNewChat={handleNewChat}
+        onResumeSession={handleResumeSession}
         sessionId={sessionId}
         autoEdit={autoEdit}
         onAutoEditChange={handleAutoEditChange}
@@ -64,6 +96,8 @@ export default function App() {
         repoId={repoId}
         autoEdit={autoEdit}
         onSessionIdChange={setSessionId}
+        initialMessages={initialMessages}
+        initialSessionId={initialSessionId}
       />
     </ThemeProvider>
   );

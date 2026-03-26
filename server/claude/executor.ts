@@ -45,12 +45,72 @@ export interface PendingPermission {
   toolInput: Record<string, unknown>;
 }
 
+export interface SessionEvent {
+  type: string;
+  [key: string]: unknown;
+}
+
+export interface AssistantPart {
+  type: "text" | "tool_result";
+  content: string;
+  toolName?: string;
+}
+
+export interface AssistantError {
+  kind: "generic" | "limit";
+  message: string;
+}
+
+export interface AssistantMessageState {
+  role: "assistant";
+  content: string;
+  parts: AssistantPart[];
+  error: AssistantError | null;
+}
+
 export interface Session {
   repoId: string;
   repoPath: string;
   sessionId: string | null;
   pendingPermission: PendingPermission | null;
   abortController: AbortController;
+  // Reconnection support
+  assistantMessage: AssistantMessageState;
+  listeners: Set<(data: SessionEvent) => void>;
+  completed: boolean;
+  leadingTextBuffer: string;
+  leadingTextPending: boolean;
+}
+
+function notifyListeners(session: Session, event: SessionEvent): void {
+  for (const listener of session.listeners) {
+    try { listener(event); } catch {}
+  }
+}
+
+export function subscribeToSession(): {
+  session: Session;
+  unsubscribe: () => void;
+  addListener: (fn: (data: SessionEvent) => void) => void;
+} | null {
+  if (!currentSession) return null;
+  const session = currentSession;
+  const listeners = new Set<(data: SessionEvent) => void>();
+  for (const fn of listeners) {
+    session.listeners.add(fn);
+  }
+  return {
+    session,
+    addListener: (fn) => {
+      listeners.add(fn);
+      session.listeners.add(fn);
+    },
+    unsubscribe: () => {
+      for (const fn of listeners) {
+        session.listeners.delete(fn);
+      }
+    },
+  };
 }
 
 function formatToolActivity(toolName: string, input: Record<string, unknown>): string {
@@ -124,6 +184,7 @@ export interface ChatCallbacks {
   onText: (content: string) => void;
   onActivity: (activity: string) => void;
   onToolResult: (result: ToolResult) => void;
+  onLimitError: (error: string) => void;
   onSessionId: (sessionId: string) => void;
   onPermission: (permission: PendingPermission) => void;
   onDone: (sessionId: string | null) => void;
@@ -148,18 +209,87 @@ export async function executeChat(
     sessionId: resumeSessionId,
     pendingPermission: null,
     abortController,
+    assistantMessage: {
+      role: "assistant",
+      content: "",
+      parts: [],
+      error: null,
+    },
+    listeners: new Set(),
+    completed: false,
+    leadingTextBuffer: "",
+    leadingTextPending: true,
   };
   currentSession = session;
   const stderrBuffer: string[] = [];
 
   log("REQUEST", { message: message.slice(0, 200), repoId, repoPath, resumeSessionId });
 
+  // Wrap callbacks to also accumulate state and notify reconnect listeners
+  const wrappedCallbacks: ChatCallbacks = {
+    onText: (content) => {
+      appendAssistantText(session, content);
+      notifyListeners(session, { type: "text", content });
+      callbacks.onText(content);
+    },
+    onActivity: (activity) => {
+      flushLeadingTextBuffer(session, wrappedCallbacks);
+      notifyListeners(session, { type: "activity", activity });
+      callbacks.onActivity(activity);
+    },
+    onToolResult: (result) => {
+      flushLeadingTextBuffer(session, wrappedCallbacks);
+      session.assistantMessage.parts.push({
+        type: "tool_result",
+        toolName: result.toolName,
+        content: result.content,
+      });
+      notifyListeners(session, { type: "tool_result", toolName: result.toolName, content: result.content });
+      callbacks.onToolResult(result);
+    },
+    onLimitError: (error) => {
+      session.leadingTextBuffer = "";
+      session.leadingTextPending = false;
+      session.assistantMessage.error = { kind: "limit", message: error };
+      notifyListeners(session, { type: "limit_error", error });
+      callbacks.onLimitError(error);
+    },
+    onSessionId: (sessionId) => {
+      notifyListeners(session, { type: "session_id", sessionId });
+      callbacks.onSessionId(sessionId);
+    },
+    onPermission: (permission) => {
+      notifyListeners(session, { type: "permission", ...permission });
+      callbacks.onPermission(permission);
+    },
+    onDone: (sid) => {
+      flushLeadingTextBuffer(session, wrappedCallbacks);
+      session.completed = true;
+      notifyListeners(session, { type: "done", sessionId: sid });
+      callbacks.onDone(sid);
+    },
+    onError: (error) => {
+      session.completed = true;
+      if (session.assistantMessage.error?.kind === "limit") {
+        return;
+      }
+      if (session.leadingTextBuffer && isLimitErrorText(session.leadingTextBuffer)) {
+        wrappedCallbacks.onLimitError(session.leadingTextBuffer.trim());
+        return;
+      }
+      flushLeadingTextBuffer(session, wrappedCallbacks);
+      session.assistantMessage.error = { kind: "generic", message: error };
+      notifyListeners(session, { type: "error", error });
+      callbacks.onError(error);
+    },
+  };
+
   try {
-    await runQuery(message, repoPath, abortController, resumeSessionId, autoEdit, session, callbacks, stderrBuffer);
-    callbacks.onDone(session.sessionId);
+    await runQuery(message, repoPath, abortController, resumeSessionId, autoEdit, session, wrappedCallbacks, stderrBuffer);
+    wrappedCallbacks.onDone(session.sessionId);
   } catch (err: any) {
     if (err.name === "AbortError" || abortController.signal.aborted) {
-      callbacks.onDone(session.sessionId);
+      wrappedCallbacks.onDone(session.sessionId);
       return;
     }
 
@@ -169,22 +299,22 @@ export async function executeChat(
       session.sessionId = null;
       try {
         stderrBuffer.length = 0;
-        await runQuery(message, repoPath, abortController, null, autoEdit, session, callbacks, stderrBuffer);
-        callbacks.onDone(session.sessionId);
+        await runQuery(message, repoPath, abortController, null, autoEdit, session, wrappedCallbacks, stderrBuffer);
+        wrappedCallbacks.onDone(session.sessionId);
         return;
       } catch (retryErr: any) {
         if (retryErr.name === "AbortError" || abortController.signal.aborted) {
-          callbacks.onDone(session.sessionId);
+          wrappedCallbacks.onDone(session.sessionId);
           return;
         }
         log("ERROR", { name: retryErr.name, message: retryErr.message, stack: retryErr.stack });
-        callbacks.onError(normalizeChatError(retryErr, stderrBuffer));
+        wrappedCallbacks.onError(normalizeChatError(retryErr, stderrBuffer));
         return;
       }
     }
 
     log("ERROR", { name: err.name, message: err.message, stack: err.stack });
-    callbacks.onError(normalizeChatError(err, stderrBuffer));
+    wrappedCallbacks.onError(normalizeChatError(err, stderrBuffer));
   }
 }
 
@@ -203,6 +333,33 @@ function stringifyToolResultContent(content: unknown): string {
   }
   if (content == null) return "";
   return JSON.stringify(content, null, 2);
+}
+
+function appendAssistantText(session: Session, content: string): void {
+  const message = session.assistantMessage;
+  message.content += content;
+  const lastPart = message.parts[message.parts.length - 1];
+  if (lastPart?.type === "text") {
+    lastPart.content += content;
+  } else {
+    message.parts.push({ type: "text", content });
+  }
+}
+
+function isLimitErrorText(content: string): boolean {
+  return /spending cap reached|you'?ve hit your limit/i.test(content)
+    || (/resets\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)/i.test(content) && /limit|cap/i.test(content));
+}
+
+function flushLeadingTextBuffer(session: Session, callbacks: ChatCallbacks): void {
+  if (!session.leadingTextBuffer) {
+    session.leadingTextPending = false;
+    return;
+  }
+  const buffered = session.leadingTextBuffer;
+  session.leadingTextBuffer = "";
+  session.leadingTextPending = false;
+  callbacks.onText(buffered);
 }
 
 function normalizeChatError(error: unknown, stderrBuffer: string[]): string {
@@ -324,7 +481,24 @@ async function runQuery(
       const event = (msg as any).event;
       if (event?.type === "content_block_delta" && event.delta?.type === "text_delta") {
         receivedTextDelta = true;
-        callbacks.onText(event.delta.text);
+        const chunk = event.delta.text;
+        if (
+          session.leadingTextPending &&
+          session.assistantMessage.parts.length === 0 &&
+          !session.assistantMessage.error
+        ) {
+          session.leadingTextBuffer += chunk;
+          if (isLimitErrorText(session.leadingTextBuffer)) {
+            callbacks.onLimitError(session.leadingTextBuffer.trim());
+          } else if (
+            session.leadingTextBuffer.length >= 120 ||
+            /\n/.test(session.leadingTextBuffer)
+          ) {
+            flushLeadingTextBuffer(session, callbacks);
+          }
+        } else {
+          callbacks.onText(chunk);
+        }
       }
       continue;
     }
@@ -362,7 +536,17 @@ async function runQuery(
     }
 
     if (msg.type === "result" && "result" in msg && msg.result && !receivedTextDelta) {
-      callbacks.onText(msg.result);
+      if (
+        session.leadingTextPending &&
+        session.assistantMessage.parts.length === 0 &&
+        !session.assistantMessage.error &&
+        isLimitErrorText(msg.result)
+      ) {
+        callbacks.onLimitError(msg.result.trim());
+      } else {
+        flushLeadingTextBuffer(session, callbacks);
+        callbacks.onText(msg.result);
+      }
     }
   }
 }
