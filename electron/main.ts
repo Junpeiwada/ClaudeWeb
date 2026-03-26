@@ -1,3 +1,6 @@
+// Claude Code等がELECTRON_RUN_AS_NODEを設定するとElectronがNode.jsモードになるため除去
+delete process.env.ELECTRON_RUN_AS_NODE;
+
 import { app, BrowserWindow, ipcMain, dialog, shell, nativeImage } from "electron";
 import path from "path";
 import { getConfig, setConfig } from "./config-store";
@@ -128,7 +131,9 @@ app.whenReady().then(async () => {
 
   // サーバー状態変更をレンダラーに通知
   serverManager.on("status-change", (status) => {
-    mainWindow?.webContents.send("server-status-change", status);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("server-status-change", status);
+    }
   });
 
   // サーバーエラーをハンドル（未処理だとUncaught Exceptionになる）

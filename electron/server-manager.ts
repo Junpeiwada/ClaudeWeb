@@ -25,20 +25,6 @@ export class ServerManager extends EventEmitter {
     return { running: this._running, port: this._port };
   }
 
-  private resolveTsxLoader(appRoot: string): string {
-    if (appRoot.endsWith(".asar")) {
-      return path.join(
-        process.resourcesPath,
-        "app.asar.unpacked",
-        "node_modules",
-        "tsx",
-        "dist",
-        "loader.mjs"
-      );
-    }
-    return path.join(appRoot, "node_modules", "tsx", "dist", "loader.mjs");
-  }
-
   start(baseDir: string, port: number, appRoot: string): Promise<void> {
     if (this.serverProcess) {
       return Promise.reject(new Error("Server is already running"));
@@ -49,18 +35,26 @@ export class ServerManager extends EventEmitter {
 
     return new Promise((resolve, reject) => {
       let settled = false;
-      const serverEntry = path.join(appRoot, "server", "index.ts");
-      const tsxLoader = this.resolveTsxLoader(appRoot);
+      const isAsar = appRoot.endsWith(".asar");
+
+      // パッケージ版: コンパイル済みJS、開発版: tsx経由でTS実行
+      const serverEntry = isAsar
+        ? path.join(appRoot, "dist-server", "index.js")
+        : path.join(appRoot, "server", "index.ts");
+      const tsxLoader = isAsar
+        ? undefined
+        : path.join(appRoot, "node_modules", "tsx", "dist", "loader.mjs");
+      const cwd = isAsar ? process.resourcesPath : appRoot;
 
       this.serverProcess = fork(serverEntry, [], {
-        execArgv: ["--import", tsxLoader],
+        execArgv: tsxLoader ? ["--import", tsxLoader] : [],
         env: {
           ...process.env,
           BASE_PROJECT_DIR: baseDir,
           PORT: String(port),
         },
         stdio: ["pipe", "pipe", "pipe", "ipc"],
-        cwd: appRoot,
+        cwd,
       });
 
       const timeout = setTimeout(() => {
@@ -70,13 +64,17 @@ export class ServerManager extends EventEmitter {
       }, 15000);
 
       this.serverProcess.on("message", (msg: unknown) => {
-        const message = msg as { type: string; port?: number };
+        const message = msg as { type: string; port?: number; message?: string };
         if (message.type === "ready") {
           settled = true;
           clearTimeout(timeout);
           this._running = true;
           this.emit("status-change", this.getStatus());
           resolve();
+        } else if (message.type === "error" && !settled) {
+          settled = true;
+          clearTimeout(timeout);
+          reject(new Error(message.message || "Server error"));
         }
       });
 

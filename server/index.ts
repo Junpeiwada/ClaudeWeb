@@ -38,10 +38,25 @@ app.get("/{*path}", (_req, res) => {
   res.sendFile(path.join(frontendDist, "index.html"));
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`ClaudeWeb server running on http://0.0.0.0:${PORT}`);
+const server = app.listen(PORT, "0.0.0.0", () => {
+  console.log(`AgentNest server running on http://0.0.0.0:${PORT}`);
   // Electron子プロセスとして起動された場合、親に起動完了を通知
   if (typeof process.send === "function") {
     process.send({ type: "ready", port: PORT });
   }
+});
+
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`ポート ${PORT} は既に使用されています`);
+    if (typeof process.send === "function") {
+      process.send({ type: "error", message: `ポート ${PORT} は既に使用されています` });
+    }
+  } else {
+    console.error("サーバーエラー:", err.message);
+    if (typeof process.send === "function") {
+      process.send({ type: "error", message: err.message });
+    }
+  }
+  process.exit(1);
 });
