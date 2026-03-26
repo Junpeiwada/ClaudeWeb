@@ -17,6 +17,12 @@ if [ -z "$GH_TOKEN" ]; then
 fi
 echo "GitHub認証: OK"
 
+# Tauri署名キーの確認
+if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+  echo "警告: TAURI_SIGNING_PRIVATE_KEY が未設定です"
+  echo "  署名なしでビルドします（自動更新は無効）"
+fi
+
 # 1. バージョンアップ
 echo "=== バージョンアップ ==="
 npm version patch --no-git-tag-version
@@ -28,17 +34,45 @@ git add package.json package-lock.json
 git commit -m "リリース: v${VERSION}"
 git tag "v${VERSION}"
 
-# 3. ビルド
-echo "=== ビルド ==="
+# 3. フロントエンドビルド
+echo "=== フロントエンドビルド ==="
 npm run build
-npm run electron:build
 
-# 4. GH_TOKENをアプリに埋め込み（electron-updater用）
-echo "{\"token\":\"${GH_TOKEN}\"}" > dist-electron/gh-token.json
+# 4. Tauriビルド
+echo "=== Tauriビルド ==="
+npx tauri build
 
 # 5. GitHub Releasesへ公開
 echo "=== GitHub Releasesへ公開 ==="
-npx electron-builder --mac --publish always
+BUNDLE_DIR="src-tauri/target/release/bundle"
+
+# リリース作成
+gh release create "v${VERSION}" \
+  --title "v${VERSION}" \
+  --draft \
+  --generate-notes
+
+# バンドル成果物をアップロード
+if [ -d "$BUNDLE_DIR/dmg" ]; then
+  for f in "$BUNDLE_DIR/dmg"/*.dmg; do
+    [ -f "$f" ] && gh release upload "v${VERSION}" "$f"
+  done
+fi
+if [ -d "$BUNDLE_DIR/macos" ]; then
+  # .appをzip化してアップロード
+  for app in "$BUNDLE_DIR/macos"/*.app; do
+    if [ -d "$app" ]; then
+      APP_NAME=$(basename "$app" .app)
+      (cd "$BUNDLE_DIR/macos" && zip -r "${APP_NAME}.app.zip" "$(basename "$app")")
+      gh release upload "v${VERSION}" "$BUNDLE_DIR/macos/${APP_NAME}.app.zip"
+    fi
+  done
+fi
+
+# Tauri updater用 latest.json があればアップロード
+if [ -f "$BUNDLE_DIR/macos/latest.json" ]; then
+  gh release upload "v${VERSION}" "$BUNDLE_DIR/macos/latest.json"
+fi
 
 # 6. git push
 echo "=== git push ==="

@@ -3,7 +3,6 @@
   "version": "0.1.2",
   "private": true,
   "type": "module",
-  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:frontend\"",
     "dev:server": "tsx watch server/index.ts",
@@ -13,77 +12,26 @@
     "test": "npx playwright test",
     "test:ui": "npx playwright test --ui",
     "build:server": "tsc -p server/tsconfig.json",
-    "electron:build": "tsc -p electron/tsconfig.json && cp electron/app.html dist-electron/ && cp -r electron/icons dist-electron/ && echo '{\"type\":\"commonjs\"}' > dist-electron/package.json && npm run build:server",
-    "electron:dev": "npm run build && npm run electron:build && electron dist-electron/main.js",
-    "electron:dist": "npm run build && npm run electron:build && electron-builder --mac",
-    "electron:dist:dir": "npm run build && npm run electron:build && electron-builder --mac --dir",
-    "build:mac": "npm run build && npm run electron:build && electron-builder --mac",
-    "build:mac:arm64": "npm run build && npm run electron:build && electron-builder --mac --arm64 --dir",
-    "build:mac:x64": "npm run build && npm run electron:build && electron-builder --mac --x64 --dir",
-    "dist:mac": "npm run build && npm run electron:build && electron-builder --mac",
+    "tauri": "tauri",
+    "tauri:dev": "npm run build && npx tauri dev",
+    "tauri:build": "npm run build && npx tauri build",
     "release": "bash scripts/release.sh",
-    "M系Macビルドインストール": "export GH_TOKEN=$(gh auth token) && npm run build:mac:arm64 && rm -rf /Applications/AgentNest.app && cp -R release/mac-arm64/AgentNest.app /Applications/ && echo \"正常完了 バージョン $(node -p \"require('./package.json').version\")\" && say -v Kyoko \"AgentNestのビルドとインストールが完了しました。バージョン$(node -p \"require('./package.json').version\")\" || (echo \"エラーが発生しました\" && say -v Kyoko \"AgentNestでエラーが発生しました\" && exit 1)",
-    "IntelMacビルドインストール": "export GH_TOKEN=$(gh auth token) && npm run build:mac:x64 && rm -rf /Applications/AgentNest.app && cp -R release/mac/AgentNest.app /Applications/ && echo \"正常完了 バージョン $(node -p \"require('./package.json').version\")\" && say -v Kyoko \"AgentNestのビルドとインストールが完了しました。バージョン$(node -p \"require('./package.json').version\")\" || (echo \"エラーが発生しました\" && say -v Kyoko \"AgentNestでエラーが発生しました\" && exit 1)"
+    "ビルドインストール": "npm run build && npx tauri build && BUNDLE_DIR=\"src-tauri/target/release/bundle/macos\" && rm -rf /Applications/AgentNest.app && cp -R \"$BUNDLE_DIR/AgentNest.app\" /Applications/ && echo \"正常完了 バージョン $(node -p \"require('./package.json').version\")\" && say -v Kyoko \"AgentNestのビルドとインストールが完了しました。バージョン$(node -p \"require('./package.json').version\")\" || (echo \"エラーが発生しました\" && say -v Kyoko \"AgentNestでエラーが発生しました\" && exit 1)"
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
-    "electron-updater": "^6.3.0",
     "express": "^5.1.0",
     "tsx": "^4.19.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "@tauri-apps/cli": "^2.10.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.2",
     "@types/node": "^22.0.0",
     "concurrently": "^9.1.2",
-    "electron": "^33.0.0",
-    "electron-builder": "^26.0.12",
     "typescript": "^5.7.0"
-  },
-  "build": {
-    "appId": "com.junpeiwada.agentnest",
-    "productName": "AgentNest",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist-electron/**/*",
-      "dist-server/**/*",
-      "server/**/*",
-      "frontend/dist/**/*",
-      "node_modules/**/*",
-      "package.json"
-    ],
-    "mac": {
-      "category": "public.app-category.developer-tools",
-      "icon": "build/icon.icns",
-      "target": [
-        {
-          "target": "zip",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        },
-        {
-          "target": "dir",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
-      ]
-    },
-    "asarUnpack": [
-      "node_modules/@anthropic-ai/**/*"
-    ],
-    "publish": {
-      "provider": "github",
-      "owner": "Junpeiwada",
-      "repo": "AgentNest"
-    }
   }
 }

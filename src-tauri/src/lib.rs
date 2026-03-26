@@ -1,0 +1,132 @@
+mod config;
+mod server;
+mod tray;
+
+use config::AppConfig;
+use server::{ServerStatus, SharedServerState};
+use tauri::{AppHandle, Manager, State};
+
+#[tauri::command]
+fn get_config(app: AppHandle) -> AppConfig {
+    config::load_config(&app)
+}
+
+#[tauri::command]
+fn set_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
+    config::save_config(&app, &config)
+}
+
+#[tauri::command]
+fn get_server_status(state: State<SharedServerState>) -> ServerStatus {
+    // 同期的にtry_lockで取得
+    match state.try_lock() {
+        Ok(s) => s.status(),
+        Err(_) => ServerStatus {
+            running: false,
+            port: 3000,
+            error: None,
+        },
+    }
+}
+
+#[tauri::command]
+async fn start_server(app: AppHandle, state: State<'_, SharedServerState>) -> Result<(), String> {
+    let cfg = config::load_config(&app);
+    let base_dir = cfg
+        .base_project_dir
+        .ok_or("プロジェクトフォルダが設定されていません")?;
+    let port = cfg.port;
+
+    server::start_server(&app, &state, &base_dir, port).await?;
+
+    // 状態変更を通知
+    tray::emit_status(&app, &state).await;
+    Ok(())
+}
+
+#[tauri::command]
+async fn stop_server(app: AppHandle, state: State<'_, SharedServerState>) -> Result<(), String> {
+    server::stop_server(&state).await?;
+    tray::emit_status(&app, &state).await;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_app_version(app: AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_shell::init())
+        .manage(server::new_shared_state())
+        .invoke_handler(tauri::generate_handler![
+            get_config,
+            set_config,
+            get_server_status,
+            start_server,
+            stop_server,
+            get_app_version,
+        ])
+        .setup(|app| {
+            // トレイ作成
+            tray::create_tray(app.handle())?;
+
+            // macOS: ウィンドウ閉じてもアプリ終了しない
+            #[cfg(target_os = "macos")]
+            {
+                app.set_activation_policy(tauri::ActivationPolicy::Regular);
+            }
+
+            // サーバー自動起動
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let cfg = config::load_config(&app_handle);
+                if cfg.auto_start_server && cfg.base_project_dir.is_some() {
+                    let state = app_handle.state::<SharedServerState>();
+                    let base_dir = cfg.base_project_dir.unwrap();
+                    match server::start_server(&app_handle, &state, &base_dir, cfg.port).await {
+                        Ok(()) => {
+                            tray::emit_status(&app_handle, &state).await;
+                        }
+                        Err(e) => {
+                            eprintln!("自動起動失敗: {}", e);
+                            tray::emit_status(&app_handle, &state).await;
+                        }
+                    }
+                }
+            });
+
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            // ウィンドウを閉じてもhideにする（トレイに残す）
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { ref api, .. } = event {
+                // macOS: 全ウィンドウ閉じてもアプリ終了しない
+                api.prevent_exit();
+            }
+
+            // Dockアイコンクリック時にウィンドウを再表示
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = event {
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.show();
+                    let _ = win.set_focus();
+                }
+            }
+        });
+}

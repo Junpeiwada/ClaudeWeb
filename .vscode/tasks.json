@@ -9,9 +9,9 @@
       "problemMatcher": []
     },
     {
-      "label": "build-electron",
+      "label": "tauri-build",
       "type": "shell",
-      "command": "npm run build && npm run electron:build",
+      "command": "npm run build && npx tauri build",
       "group": "build",
       "problemMatcher": []
     }

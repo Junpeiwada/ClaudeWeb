@@ -2,19 +2,19 @@
   "version": "0.2.0",
   "compounds": [
     {
-      "name": "AgentNest Dev",
+      "name": "AgentNest Dev (Web)",
       "configurations": ["Server", "Frontend"],
       "stopAll": true
     }
   ],
   "configurations": [
     {
-      "name": "Electron",
+      "name": "Tauri Dev",
       "type": "node",
       "request": "launch",
-      "preLaunchTask": "build-electron",
-      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
-      "args": ["${workspaceFolder}/dist-electron/main.js"],
+      "preLaunchTask": "build-frontend",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tauri", "dev"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
     },
@@ -35,16 +35,6 @@
       "runtimeExecutable": "npx",
       "args": ["vite", "--host"],
       "cwd": "${workspaceFolder}/frontend",
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "AgentNest Production",
-      "type": "node",
-      "request": "launch",
-      "preLaunchTask": "build-frontend",
-      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
-      "args": ["server/index.ts"],
-      "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
     }
   ]

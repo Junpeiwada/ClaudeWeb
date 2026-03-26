@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentNest</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --accent: #C96442;
+      --accent-hover: #b5573a;
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --surface-hover: #1a2745;
+      --border: #2a2a4a;
+      --text: #e0e0e0;
+      --text-secondary: #888;
+      --green: #4caf50;
+      --red: #e74c3c;
+      --radius: 10px;
+    }
+    html, body {
+      overflow: hidden;
+      height: 100%;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* タイトルバー（ドラッグ領域） */
+    .titlebar {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      cursor: default;
+    }
+    .titlebar-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.02em;
+      pointer-events: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* メインコンテンツ */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 28px 16px;
+      gap: 14px;
+    }
+
+    /* サーバー状態 + 制御 */
+    .server-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      height: 120px;
+      flex-shrink: 0;
+    }
+
+    /* 更新セクション */
+    .update-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      min-height: 28px;
+    }
+    .version {
+      font-size: 12px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .update-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .update-status .check-mark { color: var(--green); }
+    .update-status .error-text { color: var(--red); }
+    .btn-update {
+      padding: 5px 14px;
+      font-size: 11px;
+      border-radius: 6px;
+    }
+    .progress-bar {
+      width: 100px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.running { background: var(--green); box-shadow: 0 0 8px rgba(76, 175, 80, 0.4); }
+    .status-dot.stopped { background: #666; }
+    .buttons {
+      display: flex;
+      gap: 10px;
+    }
+    .error-msg {
+      color: var(--red);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    /* ボタン共通 */
+    button {
+      padding: 9px 20px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover { filter: brightness(1.1); }
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; filter: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
+    .btn-danger:hover { background: rgba(231, 76, 60, 0.1); }
+    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-secondary:hover { background: var(--surface-hover); }
+
+    /* === 下段（全幅） === */
+
+    /* リンク */
+    .link-section {
+      width: 100%;
+      text-align: center;
+    }
+    .web-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      transition: background 0.15s ease;
+      cursor: pointer;
+    }
+    .web-link:hover { background: rgba(201, 100, 66, 0.1); }
+
+    /* 区切り線 */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* 設定情報 */
+    .info-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      padding: 0 4px;
+    }
+    .info-icon { display: none; }
+    .info-value {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+    }
+    .settings-btn {
+      width: 100%;
+      justify-content: center;
+      margin-top: 4px;
+    }
+
+    /* 設定フォーム */
+    .settings-form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .settings-form.hidden { display: none; }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+    input[type="text"], input[type="number"] {
+      flex: 1;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+    }
+    input:focus { border-color: var(--accent); }
+    input[type="number"] { width: 100px; flex: none; -moz-appearance: textfield; appearance: textfield; }
+    .port-autostart-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .port-autostart-row .form-group { flex: 0; margin-bottom: 0; }
+    .port-autostart-row .form-group label { margin-bottom: 0; }
+    .port-autostart-row .checkbox-row { margin-top: 0; padding-top: 16px; }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .checkbox-row input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+    .form-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 2px;
+    }
+    .btn-save { background: var(--accent); color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="titlebar" id="titlebar">
+    <span class="titlebar-title">AgentNest</span>
+  </div>
+
+  <div class="content">
+    <!-- サーバー状態 + 制御 + リンク -->
+    <div class="server-section">
+      <div class="status-badge">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">確認中...</span>
+      </div>
+      <div class="buttons" id="controlButtons"></div>
+      <div class="error-msg" id="statusError"></div>
+      <div class="link-section" id="linkSection">
+        <a class="web-link" id="webLink" href="#"></a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 設定情報（通常表示） -->
+    <div class="info-section" id="infoSection">
+      <div class="update-section">
+        <span class="version" id="appVersion"></span>
+        <div class="update-status" id="updateStatus"></div>
+      </div>
+      <div class="info-row">
+        <span class="info-value" id="infoDir">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-value" id="infoPort">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-value" id="infoAuto">-</span>
+      </div>
+      <button class="btn-secondary settings-btn" id="showSettingsBtn">⚙ 設定を変更</button>
+    </div>
+
+    <!-- 設定フォーム（編集時） -->
+    <div class="settings-form hidden" id="settingsForm">
+      <div class="form-group">
+        <label>プロジェクトフォルダ</label>
+        <div class="input-row">
+          <input type="text" id="inputDir" readonly placeholder="フォルダを選択...">
+          <button class="btn-secondary" id="selectDirBtn">選択</button>
+        </div>
+      </div>
+      <div class="port-autostart-row">
+        <div class="form-group">
+          <label>ポート番号</label>
+          <input type="number" id="inputPort" min="1024" max="65535" value="3000">
+        </div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="inputAutoStart" checked>
+          アプリ起動時に自動開始
+        </label>
+      </div>
+      <div class="error-msg" id="formError"></div>
+      <div class="form-buttons">
+        <button class="btn-secondary" id="cancelSettingsBtn">キャンセル</button>
+        <button class="btn-save" id="saveSettingsBtn">保存して再起動</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Tauri API
+    const { invoke } = window.__TAURI__.core;
+    const { listen } = window.__TAURI__.event;
+    const { open } = window.__TAURI__.dialog;
+    const { openUrl } = window.__TAURI__.opener;
+
+    let currentConfig = { baseProjectDir: "", port: 3000, autoStartServer: true };
+    let isRunning = false;
+    let isBusy = false;
+
+    // --- DOM ---
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const controlButtons = document.getElementById("controlButtons");
+    const linkSection = document.getElementById("linkSection");
+    const webLink = document.getElementById("webLink");
+    const infoDir = document.getElementById("infoDir");
+    const infoPort = document.getElementById("infoPort");
+    const infoAuto = document.getElementById("infoAuto");
+    const infoSection = document.getElementById("infoSection");
+    const settingsForm = document.getElementById("settingsForm");
+    const showSettingsBtn = document.getElementById("showSettingsBtn");
+    const cancelSettingsBtn = document.getElementById("cancelSettingsBtn");
+    const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+    const selectDirBtn = document.getElementById("selectDirBtn");
+    const inputDir = document.getElementById("inputDir");
+    const inputPort = document.getElementById("inputPort");
+    const inputAutoStart = document.getElementById("inputAutoStart");
+    const formError = document.getElementById("formError");
+    const statusError = document.getElementById("statusError");
+
+    // --- Render ---
+    function render() {
+      statusDot.className = "status-dot " + (isRunning ? "running" : "stopped");
+      statusText.textContent = isRunning
+        ? `起動中  Port: ${currentConfig.port}`
+        : "停止中";
+
+      if (isRunning) {
+        statusError.textContent = "";
+      }
+
+      if (isRunning) {
+        controlButtons.innerHTML = "";
+        const stopBtn = makeBtn("■ 停止", "btn-danger", handleStop);
+        const restartBtn = makeBtn("↻ 再起動", "btn-secondary", handleRestart);
+        controlButtons.append(stopBtn, restartBtn);
+      } else {
+        controlButtons.innerHTML = "";
+        const startBtn = makeBtn("▶ 開始", "btn-primary", handleStart);
+        controlButtons.append(startBtn);
+      }
+
+      if (isRunning) {
+        linkSection.style.visibility = "visible";
+        webLink.textContent = `↗ http://localhost:${currentConfig.port}`;
+      } else {
+        linkSection.style.visibility = "hidden";
+        webLink.textContent = "\u00A0"; // 高さ維持用
+      }
+
+      infoDir.textContent = currentConfig.baseProjectDir || "未設定";
+      infoPort.textContent = `ポート: ${currentConfig.port}`;
+      infoAuto.textContent = `自動起動: ${currentConfig.autoStartServer ? "ON" : "OFF"}`;
+
+      controlButtons.querySelectorAll("button").forEach(b => b.disabled = isBusy);
+    }
+
+    function makeBtn(label, cls, handler) {
+      const btn = document.createElement("button");
+      btn.className = cls;
+      btn.textContent = label;
+      btn.addEventListener("click", handler);
+      return btn;
+    }
+
+    // --- Actions ---
+    async function handleStart() {
+      if (isBusy) return;
+      if (!currentConfig.baseProjectDir) {
+        showSettings();
+        return;
+      }
+      isBusy = true;
+      statusError.textContent = "";
+      render();
+      try {
+        await invoke("start_server");
+      } catch (e) {
+        statusError.textContent = "起動に失敗: " + e;
+      }
+      isBusy = false;
+      render();
+    }
+
+    async function handleStop() {
+      if (isBusy) return;
+      isBusy = true;
+      statusError.textContent = "";
+      render();
+      try {
+        await invoke("stop_server");
+      } catch (e) {
+        statusError.textContent = "停止に失敗: " + e;
+      }
+      isBusy = false;
+      render();
+    }
+
+    async function handleRestart() {
+      if (isBusy) return;
+      isBusy = true;
+      statusError.textContent = "";
+      render();
+      try {
+        await invoke("stop_server");
+        await invoke("start_server");
+      } catch (e) {
+        statusError.textContent = "再起動に失敗: " + e;
+      }
+      isBusy = false;
+      render();
+    }
+
+    // --- Link ---
+    webLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (isRunning) {
+        openUrl(`http://localhost:${currentConfig.port}`);
+      }
+    });
+
+    // --- Settings ---
+    function updateSaveButtonLabel() {
+      saveSettingsBtn.textContent = isRunning ? "保存して再起動" : "保存";
+    }
+
+    function showSettings() {
+      inputDir.value = currentConfig.baseProjectDir || "";
+      inputPort.value = currentConfig.port;
+      inputAutoStart.checked = currentConfig.autoStartServer;
+      formError.textContent = "";
+      updateSaveButtonLabel();
+      infoSection.style.display = "none";
+      settingsForm.classList.remove("hidden");
+    }
+
+    function hideSettings() {
+      settingsForm.classList.add("hidden");
+      infoSection.style.display = "";
+    }
+
+    showSettingsBtn.addEventListener("click", showSettings);
+    cancelSettingsBtn.addEventListener("click", hideSettings);
+
+    selectDirBtn.addEventListener("click", async () => {
+      const dir = await open({ directory: true, title: "プロジェクトフォルダを選択" });
+      if (dir) inputDir.value = dir;
+    });
+
+    saveSettingsBtn.addEventListener("click", async () => {
+      const dir = inputDir.value;
+      const port = parseInt(inputPort.value, 10);
+      if (!dir) { formError.textContent = "フォルダを選択してください"; return; }
+      if (isNaN(port) || port < 1024 || port > 65535) {
+        formError.textContent = "ポートは1024〜65535の範囲";
+        return;
+      }
+
+      saveSettingsBtn.disabled = true;
+      saveSettingsBtn.textContent = "保存中...";
+      formError.textContent = "";
+
+      try {
+        const newConfig = { baseProjectDir: dir, port, autoStartServer: inputAutoStart.checked };
+        await invoke("set_config", { config: newConfig });
+        currentConfig = { ...currentConfig, ...newConfig };
+
+        if (isRunning) {
+          await invoke("stop_server");
+          await invoke("start_server");
+        }
+
+        hideSettings();
+      } catch (e) {
+        formError.textContent = "エラー: " + e;
+      } finally {
+        saveSettingsBtn.disabled = false;
+        updateSaveButtonLabel();
+      }
+      render();
+    });
+
+    // --- Update UI ---
+    const appVersionEl = document.getElementById("appVersion");
+    const updateStatusEl = document.getElementById("updateStatus");
+
+    function renderUpdateStatus(status) {
+      switch (status.state) {
+        case "idle":
+          updateStatusEl.innerHTML = `<button class="btn-secondary btn-update" id="checkUpdateBtn">更新を確認</button>`;
+          document.getElementById("checkUpdateBtn")?.addEventListener("click", handleCheckUpdate);
+          break;
+        case "checking":
+          updateStatusEl.innerHTML = `<div class="spinner"></div> 確認中...`;
+          break;
+        case "available":
+          updateStatusEl.innerHTML = `v${status.version} をダウンロード中...`;
+          break;
+        case "downloading":
+          updateStatusEl.innerHTML = `
+            <div class="progress-bar"><div class="progress-bar-fill" style="width:${status.percent}%"></div></div>
+            ${status.percent}%`;
+          break;
+        case "downloaded":
+          updateStatusEl.innerHTML = `<span class="check-mark">●</span> v${status.version} 準備完了<button class="btn-primary btn-update" id="installUpdateBtn">再起動して更新</button>`;
+          document.getElementById("installUpdateBtn")?.addEventListener("click", handleInstallUpdate);
+          break;
+        case "up-to-date":
+          updateStatusEl.innerHTML = `<span class="check-mark">✓</span> 最新バージョンです`;
+          break;
+        case "error":
+          updateStatusEl.innerHTML = `<span class="error-text">更新エラー</span><button class="btn-secondary btn-update" id="retryUpdateBtn">再試行</button>`;
+          document.getElementById("retryUpdateBtn")?.addEventListener("click", handleCheckUpdate);
+          break;
+        default:
+          updateStatusEl.innerHTML = `<button class="btn-secondary btn-update" id="checkUpdateBtn2">更新を確認</button>`;
+          document.getElementById("checkUpdateBtn2")?.addEventListener("click", handleCheckUpdate);
+      }
+    }
+
+    async function handleCheckUpdate() {
+      renderUpdateStatus({ state: "checking" });
+      try {
+        const { check } = window.__TAURI__.updater;
+        const update = await check();
+        if (update) {
+          renderUpdateStatus({ state: "available", version: update.version });
+          await update.downloadAndInstall((progress) => {
+            if (progress.event === "Started") {
+              renderUpdateStatus({ state: "downloading", percent: 0 });
+            } else if (progress.event === "Progress") {
+              // progressにはchunkLengthとcontentLengthがある
+            } else if (progress.event === "Finished") {
+              renderUpdateStatus({ state: "downloaded", version: update.version });
+            }
+          });
+          renderUpdateStatus({ state: "downloaded", version: update.version });
+        } else {
+          renderUpdateStatus({ state: "up-to-date" });
+        }
+      } catch (e) {
+        console.error("Update error:", e);
+        renderUpdateStatus({ state: "error", message: String(e) });
+      }
+    }
+
+    async function handleInstallUpdate() {
+      try {
+        const { relaunch } = window.__TAURI__.process;
+        await relaunch();
+      } catch (e) {
+        console.error("Relaunch error:", e);
+      }
+    }
+
+    // --- Server status listener ---
+    await listen("server-status-change", (event) => {
+      const status = event.payload;
+      isRunning = status.running;
+      if (status.port) currentConfig.port = status.port;
+      if (status.error) {
+        statusError.textContent = status.error;
+      }
+      render();
+      updateSaveButtonLabel();
+    });
+
+    // --- Init ---
+    async function init() {
+      currentConfig = await invoke("get_config");
+      const status = await invoke("get_server_status");
+      isRunning = status.running;
+      render();
+
+      // バージョン表示
+      const version = await invoke("get_app_version");
+      appVersionEl.textContent = `v${version}`;
+
+      // 更新状態: 初期はidle
+      renderUpdateStatus({ state: "idle" });
+
+      // 未設定なら設定フォームを最初から表示
+      if (!currentConfig.baseProjectDir) {
+        showSettings();
+      }
+    }
+
+    // --- Titlebar drag ---
+    const { getCurrentWindow } = window.__TAURI__.window;
+    document.getElementById("titlebar").addEventListener("mousedown", async (e) => {
+      if (e.button === 0) {
+        await getCurrentWindow().startDragging();
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>

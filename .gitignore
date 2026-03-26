@@ -6,9 +6,7 @@ frontend/dist/
 logs/
 debug.log
 test-results/
-dist-electron/
-dist-server/
-gh-token.json
 release/
+src-tauri/target/
 build/icon.iconset/
 build/icon.svg
