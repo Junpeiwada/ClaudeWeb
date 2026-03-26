@@ -28,7 +28,7 @@ function createWindow(): BrowserWindow {
 
   const win = new BrowserWindow({
     width: 420,
-    height: 560,
+    height: 620,
     x: config.windowBounds?.x,
     y: config.windowBounds?.y,
     titleBarStyle: "hiddenInset",

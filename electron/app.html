@@ -51,37 +51,93 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      padding: 32px 28px 24px;
-      gap: 24px;
+      padding: 24px 28px 24px;
+      gap: 20px;
     }
 
-    /* ロゴ */
+    /* === 上部2カラム === */
+    .top-row {
+      display: flex;
+      gap: 20px;
+    }
+
+    /* 左カラム: ロゴ + 更新 */
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      min-width: 140px;
+    }
     .logo {
-      width: 56px;
-      height: 56px;
-      border-radius: 16px;
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
       background: linear-gradient(135deg, #C96442 0%, #D4845E 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 700;
       color: #fff;
     }
     .app-name {
-      font-size: 20px;
+      font-size: 16px;
       font-weight: 700;
-      margin-top: 4px;
     }
-
-    /* ステータス */
-    .status-section {
+    .version {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .update-status {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 16px;
-      width: 100%;
+      gap: 6px;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .update-status .check-mark { color: var(--green); }
+    .update-status .error-text { color: var(--red); }
+    .btn-update {
+      padding: 5px 14px;
+      font-size: 11px;
+      border-radius: 6px;
+    }
+    .progress-bar {
+      width: 100px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    /* 右カラム: サーバー状態 + 制御 */
+    .right-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
     }
     .status-badge {
       display: flex;
@@ -98,12 +154,17 @@
     }
     .status-dot.running { background: var(--green); box-shadow: 0 0 8px rgba(76, 175, 80, 0.4); }
     .status-dot.stopped { background: #666; }
-
-    /* ボタン */
     .buttons {
       display: flex;
       gap: 10px;
     }
+    .error-msg {
+      color: var(--red);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    /* ボタン共通 */
     button {
       -webkit-app-region: no-drag;
       padding: 9px 20px;
@@ -126,6 +187,8 @@
     .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
     .btn-secondary:hover { background: var(--surface-hover); }
 
+    /* === 下段（全幅） === */
+
     /* リンク */
     .link-section {
       width: 100%;
@@ -146,7 +209,6 @@
       cursor: pointer;
     }
     .web-link:hover { background: rgba(201, 100, 66, 0.1); }
-    .web-link.disabled { color: var(--text-secondary); cursor: default; pointer-events: none; }
 
     /* 区切り線 */
     .divider {
@@ -231,63 +293,6 @@
       justify-content: flex-end;
     }
     .btn-save { background: var(--accent); color: #fff; }
-
-    .error-msg {
-      color: var(--red);
-      font-size: 12px;
-      text-align: center;
-    }
-
-    /* 更新セクション */
-    .update-section {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      color: var(--text-secondary);
-    }
-    .update-section .version {
-      color: var(--text-secondary);
-      font-size: 12px;
-    }
-    .update-status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-    }
-    .update-status .check-mark { color: var(--green); }
-    .update-status .error-text { color: var(--red); }
-    .btn-update {
-      padding: 5px 14px;
-      font-size: 12px;
-      border-radius: 6px;
-    }
-    .progress-bar {
-      width: 120px;
-      height: 4px;
-      background: var(--border);
-      border-radius: 2px;
-      overflow: hidden;
-    }
-    .progress-bar-fill {
-      height: 100%;
-      background: var(--accent);
-      border-radius: 2px;
-      transition: width 0.3s ease;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    .spinner {
-      width: 14px;
-      height: 14px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      flex-shrink: 0;
-    }
   </style>
 </head>
 <body>
@@ -296,24 +301,25 @@
   </div>
 
   <div class="content">
-    <!-- ロゴ -->
-    <div class="logo">C</div>
-    <div class="app-name">AgentNest</div>
-
-    <!-- バージョン & 更新 -->
-    <div class="update-section">
-      <span class="version" id="appVersion"></span>
-      <div class="update-status" id="updateStatus"></div>
-    </div>
-
-    <!-- ステータス -->
-    <div class="status-section">
-      <div class="status-badge">
-        <span class="status-dot" id="statusDot"></span>
-        <span id="statusText">確認中...</span>
+    <!-- 上部2カラム -->
+    <div class="top-row">
+      <!-- 左カラム: ロゴ + バージョン + 更新 -->
+      <div class="left-col">
+        <div class="logo">C</div>
+        <div class="app-name">AgentNest</div>
+        <span class="version" id="appVersion"></span>
+        <div class="update-status" id="updateStatus"></div>
       </div>
-      <div class="buttons" id="controlButtons"></div>
-      <div class="error-msg" id="statusError"></div>
+
+      <!-- 右カラム: サーバー状態 + 制御ボタン -->
+      <div class="right-col">
+        <div class="status-badge">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">確認中...</span>
+        </div>
+        <div class="buttons" id="controlButtons"></div>
+        <div class="error-msg" id="statusError"></div>
+      </div>
     </div>
 
     <!-- Web UIリンク -->
@@ -579,13 +585,13 @@
             ${status.percent}%`;
           break;
         case "downloaded":
-          updateStatusEl.innerHTML = `<span class="check-mark">●</span> v${status.version} 準備完了 <button class="btn-primary btn-update" onclick="handleInstallUpdate()">再起動して更新</button>`;
+          updateStatusEl.innerHTML = `<span class="check-mark">●</span> v${status.version} 準備完了<button class="btn-primary btn-update" onclick="handleInstallUpdate()">再起動して更新</button>`;
           break;
         case "up-to-date":
           updateStatusEl.innerHTML = `<span class="check-mark">✓</span> 最新バージョンです`;
           break;
         case "error":
-          updateStatusEl.innerHTML = `<span class="error-text">更新エラー</span> <button class="btn-secondary btn-update" onclick="handleCheckUpdate()">再試行</button>`;
+          updateStatusEl.innerHTML = `<span class="error-text">更新エラー</span><button class="btn-secondary btn-update" onclick="handleCheckUpdate()">再試行</button>`;
           break;
         default:
           updateStatusEl.innerHTML = `<button class="btn-secondary btn-update" onclick="handleCheckUpdate()">更新を確認</button>`;
