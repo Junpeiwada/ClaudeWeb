@@ -17,11 +17,31 @@ if [ -z "$GH_TOKEN" ]; then
 fi
 echo "GitHub認証: OK"
 
-# Tauri署名キーの確認
-if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-  echo "警告: TAURI_SIGNING_PRIVATE_KEY が未設定です"
-  echo "  署名なしでビルドします（自動更新は無効）"
+# cargo PATHの確認
+export PATH="$HOME/.cargo/bin:$PATH"
+if ! command -v cargo &> /dev/null; then
+  echo "エラー: Rust (cargo) がインストールされていません"
+  exit 1
 fi
+
+# Tauri署名キーの読み込み
+if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+  if [ -f "$HOME/.tauri/AgentNest.key" ]; then
+    export TAURI_SIGNING_PRIVATE_KEY=$(cat "$HOME/.tauri/AgentNest.key")
+    export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
+    echo "署名キー: ~/.tauri/AgentNest.key から読み込み"
+  else
+    echo "エラー: TAURI_SIGNING_PRIVATE_KEY が未設定で、~/.tauri/AgentNest.key も見つかりません"
+    echo "  自動更新には署名が必須です"
+    exit 1
+  fi
+else
+  echo "署名キー: 環境変数から読み込み"
+fi
+
+# 現在のブランチを取得
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "現在のブランチ: ${BRANCH}"
 
 # 1. バージョンアップ
 echo "=== バージョンアップ ==="
@@ -38,7 +58,7 @@ git tag "v${VERSION}"
 echo "=== フロントエンドビルド ==="
 npm run build
 
-# 4. Tauriビルド
+# 4. Tauriビルド（署名付き）
 echo "=== Tauriビルド ==="
 npx tauri build
 
@@ -52,31 +72,45 @@ gh release create "v${VERSION}" \
   --draft \
   --generate-notes
 
-# バンドル成果物をアップロード
+# DMGアップロード
 if [ -d "$BUNDLE_DIR/dmg" ]; then
   for f in "$BUNDLE_DIR/dmg"/*.dmg; do
     [ -f "$f" ] && gh release upload "v${VERSION}" "$f"
   done
 fi
-if [ -d "$BUNDLE_DIR/macos" ]; then
-  # .appをzip化してアップロード
-  for app in "$BUNDLE_DIR/macos"/*.app; do
-    if [ -d "$app" ]; then
-      APP_NAME=$(basename "$app" .app)
-      (cd "$BUNDLE_DIR/macos" && zip -r "${APP_NAME}.app.zip" "$(basename "$app")")
-      gh release upload "v${VERSION}" "$BUNDLE_DIR/macos/${APP_NAME}.app.zip"
-    fi
-  done
+
+# updater用アーティファクト（.app.tar.gz）アップロード
+if [ -f "$BUNDLE_DIR/macos/AgentNest.app.tar.gz" ]; then
+  gh release upload "v${VERSION}" "$BUNDLE_DIR/macos/AgentNest.app.tar.gz"
+  echo "updater用バンドルをアップロード"
 fi
 
-# Tauri updater用 latest.json があればアップロード
-if [ -f "$BUNDLE_DIR/macos/latest.json" ]; then
-  gh release upload "v${VERSION}" "$BUNDLE_DIR/macos/latest.json"
-fi
+# latest.jsonを生成してアップロード
+SIGNATURE=$(cat "$BUNDLE_DIR/macos/AgentNest.app.tar.gz.sig")
+PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+cat > "$BUNDLE_DIR/macos/latest.json" <<JSONEOF
+{
+  "version": "${VERSION}",
+  "notes": "v${VERSION}",
+  "pub_date": "${PUB_DATE}",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "${SIGNATURE}",
+      "url": "https://github.com/Junpeiwada/AgentNest/releases/download/v${VERSION}/AgentNest.app.tar.gz"
+    },
+    "darwin-x86_64": {
+      "signature": "${SIGNATURE}",
+      "url": "https://github.com/Junpeiwada/AgentNest/releases/download/v${VERSION}/AgentNest.app.tar.gz"
+    }
+  }
+}
+JSONEOF
+gh release upload "v${VERSION}" "$BUNDLE_DIR/macos/latest.json"
+echo "latest.jsonをアップロード"
 
 # 6. git push
 echo "=== git push ==="
-git push origin main
+git push origin "${BRANCH}"
 git push origin "v${VERSION}"
 
 # 7. draftリリースを公開

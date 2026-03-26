@@ -42,14 +42,15 @@
     "macOS": {
       "minimumSystemVersion": "10.15"
     },
-    "publisher": "Junpei Wada"
+    "publisher": "Junpei Wada",
+    "createUpdaterArtifacts": "v1Compatible"
   },
   "plugins": {
     "updater": {
       "endpoints": [
         "https://github.com/Junpeiwada/AgentNest/releases/latest/download/latest.json"
       ],
-      "pubkey": ""
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVBNUIyMDk5NUQ1MTMzNDAKUldSQU0xRmRtU0JiV3BRQWdMUjhtOXIvb3VNeGJicUhmYWJzQ3JqenVvQjk4cEdPZlhMbi9OMVQK"
     },
     "shell": {
       "open": true
