@@ -7,6 +7,13 @@
       "command": "npm run build",
       "group": "build",
       "problemMatcher": []
+    },
+    {
+      "label": "build-electron",
+      "type": "shell",
+      "command": "npm run build && npm run electron:build",
+      "group": "build",
+      "problemMatcher": []
     }
   ]
 }

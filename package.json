@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:frontend\"",
     "dev:server": "tsx watch server/index.ts",
@@ -10,13 +11,18 @@
     "build": "cd frontend && npx vite build",
     "start": "tsx server/index.ts",
     "test": "npx playwright test",
-    "test:ui": "npx playwright test --ui"
+    "test:ui": "npx playwright test --ui",
+    "electron:build": "tsc -p electron/tsconfig.json && cp electron/app.html dist-electron/ && cp -r electron/icons dist-electron/ && echo '{\"type\":\"commonjs\"}' > dist-electron/package.json",
+    "electron:dev": "npm run build && npm run electron:build && electron dist-electron/main.js",
+    "electron:dist": "npm run build && npm run electron:build && electron-builder --mac",
+    "electron:dist:dir": "npm run build && npm run electron:build && electron-builder --mac --dir"
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "tsx": "^4.19.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -24,7 +30,34 @@
     "@types/express": "^5.0.2",
     "@types/node": "^22.0.0",
     "concurrently": "^9.1.2",
-    "tsx": "^4.19.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^26.0.12",
     "typescript": "^5.7.0"
+  },
+  "build": {
+    "appId": "com.junpeiwada.claudeweb",
+    "productName": "ClaudeWeb",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "server/**/*",
+      "frontend/dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "target": [
+        { "target": "dmg", "arch": ["arm64"] },
+        { "target": "dir", "arch": ["arm64"] }
+      ]
+    },
+    "asarUnpack": [
+      "node_modules/tsx/**/*",
+      "node_modules/@anthropic-ai/**/*"
+    ]
   }
 }

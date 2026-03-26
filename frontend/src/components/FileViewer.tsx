@@ -39,16 +39,25 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
   const [data, setData] = useState<FileContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [fetchTarget, setFetchTarget] = useState({ repoId, filePath });
+
+  // deps変更時にeffect外でリセット（lint-safe）
+  if (fetchTarget.repoId !== repoId || fetchTarget.filePath !== filePath) {
+    setFetchTarget({ repoId, filePath });
+    setData(null);
+    setLoading(true);
+  }
 
   const fileName = filePath.split("/").pop() || filePath;
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
     fetch(`/api/repos/${encodeURIComponent(repoId)}/file/${filePath.split("/").map(encodeURIComponent).join("/")}`)
       .then((r) => r.json())
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
+      .then((result) => { if (!cancelled) setData(result); })
+      .catch(() => { if (!cancelled) setData(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [repoId, filePath]);
 
   const handleCopy = () => {

@@ -40,4 +40,8 @@ app.get("/{*path}", (_req, res) => {
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`ClaudeWeb server running on http://0.0.0.0:${PORT}`);
+  // Electron子プロセスとして起動された場合、親に起動完了を通知
+  if (typeof process.send === "function") {
+    process.send({ type: "ready", port: PORT });
+  }
 });

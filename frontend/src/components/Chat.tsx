@@ -1,11 +1,11 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { Box } from "@mui/material";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import ActivityIndicator from "./ActivityIndicator";
 import PermissionDialog from "./PermissionDialog";
 import { useChat } from "../hooks/useChat";
-import type { Message, ImageAttachment } from "../hooks/useChat";
+import type { Message } from "../hooks/useChat";
 
 interface Props {
   repoId: string;
@@ -28,10 +28,12 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
 
   // sessionId変更時に親に通知
   const prevSessionIdRef = useRef(sessionId);
-  if (prevSessionIdRef.current !== sessionId) {
-    prevSessionIdRef.current = sessionId;
-    onSessionIdChange?.(sessionId);
-  }
+  useEffect(() => {
+    if (prevSessionIdRef.current !== sessionId) {
+      prevSessionIdRef.current = sessionId;
+      onSessionIdChange?.(sessionId);
+    }
+  }, [sessionId, onSessionIdChange]);
 
   const handleStop = useCallback(async () => {
     await fetch("/api/interrupt", { method: "POST" });

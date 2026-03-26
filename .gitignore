@@ -6,3 +6,7 @@ frontend/dist/
 logs/
 debug.log
 test-results/
+dist-electron/
+release/
+build/icon.iconset/
+build/icon.svg

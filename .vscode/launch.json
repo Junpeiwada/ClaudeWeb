@@ -9,6 +9,16 @@
   ],
   "configurations": [
     {
+      "name": "Electron",
+      "type": "node",
+      "request": "launch",
+      "preLaunchTask": "build-electron",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+      "args": ["${workspaceFolder}/dist-electron/main.js"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
       "name": "Server",
       "type": "node",
       "request": "launch",

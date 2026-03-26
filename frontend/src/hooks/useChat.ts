@@ -31,6 +31,9 @@ export interface PendingPermission {
   toolInput: Record<string, unknown>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- SSE events have dynamic shapes
+type SSEEvent = Record<string, any>;
+
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_DELAY_MS = 1500;
 
@@ -112,7 +115,7 @@ export function useChat(
     async (
       reader: ReadableStreamDefaultReader<Uint8Array>,
       signal: AbortSignal,
-      handler: (data: any) => void
+      handler: (data: SSEEvent) => void
     ) => {
       const decoder = new TextDecoder();
       let buffer = "";
@@ -130,7 +133,7 @@ export function useChat(
           if (!line.startsWith("data: ")) continue;
           try {
             handler(JSON.parse(line.slice(6)));
-          } catch {}
+          } catch { /* skip malformed SSE lines */ }
         }
       }
     },
@@ -139,7 +142,7 @@ export function useChat(
 
   /** Handle a single SSE event (shared between initial connection and reconnect) */
   const handleSSEEvent = useCallback(
-    (data: any) => {
+    (data: SSEEvent) => {
       if (data.type === "session_id") {
         setSessionId(data.sessionId);
       } else if (data.type === "activity") {
@@ -281,8 +284,8 @@ export function useChat(
         if (!reader) return;
 
         await processSSEStream(reader, controller.signal, handleSSEEvent);
-      } catch (err: any) {
-        if (err.name === "AbortError") {
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") {
           // User cancelled — don't reconnect
         } else {
           // Connection error — attempt reconnect
