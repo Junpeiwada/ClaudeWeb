@@ -1,8 +1,8 @@
-# ClaudeWeb 仕様書
+# AgentNest 仕様書
 
 ## 概要
 
-ClaudeWeb は、ブラウザから Claude Code を操作する汎用 Web インターフェース。
+AgentNest は、ブラウザから Claude Code を操作する汎用 Web インターフェース。
 VSCode を使えないユーザーでも、ブラウザのチャット UI から Claude Code と対話的に作業できる。
 
 ### 想定ユースケース
@@ -25,7 +25,7 @@ VSCode を使えないユーザーでも、ブラウザのチャット UI から
 クライアント (iPhone Safari / PC ブラウザ)
   → Tailscale VPN
     → Mac (localhost:3000)
-      → ClaudeWeb サーバ (Express)
+      → AgentNest サーバ (Express)
         → Claude Code SDK (@anthropic-ai/claude-code)
           → 対象リポジトリのファイルシステムを直接操作
 ```
@@ -48,7 +48,7 @@ VSCode を使えないユーザーでも、ブラウザのチャット UI から
 
 ```
 ┌─────────────────────────────────────┐
-│ ClaudeWeb        [リポジトリ選択 ▼] │
+│ AgentNest        [リポジトリ選択 ▼] │
 ├─────────────────────────────────────┤
 │                                     │
 │  🤖 どのような作業をしますか？       │
@@ -140,7 +140,7 @@ data: {"type": "done", "sessionId": "abc-123"}
 [
   { "id": "blog", "name": "blog", "path": "/path/to/projects/blog" },
   { "id": "PID", "name": "PID", "path": "/path/to/projects/PID" },
-  { "id": "ClaudeWeb", "name": "ClaudeWeb", "path": "/path/to/projects/ClaudeWeb" }
+  { "id": "AgentNest", "name": "AgentNest", "path": "/path/to/projects/AgentNest" }
 ]
 ```
 
@@ -206,9 +206,9 @@ const result = await claude({
 ## ディレクトリ構成
 
 ```
-ClaudeWeb/
+AgentNest/
 ├── Docs/
-│   └── ClaudeWeb仕様.md        # 本ドキュメント
+│   └── AgentNest仕様.md        # 本ドキュメント
 ├── server/
 │   ├── index.ts                # Express サーバ起動
 │   ├── routes/
@@ -241,7 +241,7 @@ ClaudeWeb/
 ### 開発モード
 
 ```bash
-cd ClaudeWeb
+cd AgentNest
 npm install
 npm run dev        # 開発モード（サーバ + フロントエンド同時起動）
 ```
