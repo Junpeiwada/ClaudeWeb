@@ -168,6 +168,7 @@ export default function Header({ repoId, onRepoChange, onNewChat, onResumeSessio
           New
         </Typography>
       </Box>
+
     </Box>
   );
 }

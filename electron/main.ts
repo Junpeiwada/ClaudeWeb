@@ -1,7 +1,7 @@
 // Claude Code等がELECTRON_RUN_AS_NODEを設定するとElectronがNode.jsモードになるため除去
 delete process.env.ELECTRON_RUN_AS_NODE;
 
-import { app, BrowserWindow, ipcMain, dialog, shell, nativeImage } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, shell, nativeImage, Menu } from "electron";
 import path from "path";
 import { getConfig, setConfig } from "./config-store";
 import { ServerManager } from "./server-manager";
@@ -112,18 +112,63 @@ function registerIpcHandlers(): void {
 // === App Lifecycle ===
 
 app.whenReady().then(async () => {
-  // 開発時のDockアイコンを設定（パッケージ版はelectron-builderが.icnsを適用）
-  if (!app.isPackaged) {
-    const iconPath = path.join(__dirname, "..", "build", "icon_1024.png");
-    try {
-      const dockIcon = nativeImage.createFromPath(iconPath);
-      if (!dockIcon.isEmpty()) {
-        app.dock?.setIcon(dockIcon);
-      }
-    } catch {
-      // アイコンが無い場合は無視
+  // アプリアイコンを設定（Aboutパネルにも反映される）
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, "build", "icon_1024.png")
+    : path.join(__dirname, "..", "build", "icon_1024.png");
+  try {
+    const appIcon = nativeImage.createFromPath(iconPath);
+    if (!appIcon.isEmpty()) {
+      app.dock?.setIcon(appIcon);
     }
+  } catch {
+    // アイコンが無い場合は無視
   }
+
+  // Aboutパネル設定
+  app.setAboutPanelOptions({
+    applicationName: "AgentNest",
+    applicationVersion: app.getVersion(),
+    copyright: "Copyright (c) 2026 Junpei Wada",
+    credits: "ブラウザからClaude Codeを操作するWebインターフェース",
+  });
+
+  // アプリケーションメニュー
+  const menuTemplate: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: app.name,
+      submenu: [
+        { role: "about", label: "AgentNest について" },
+        { type: "separator" },
+        { role: "hide", label: "AgentNest を隠す" },
+        { role: "hideOthers", label: "ほかを隠す" },
+        { role: "unhide", label: "すべてを表示" },
+        { type: "separator" },
+        { role: "quit", label: "AgentNest を終了" },
+      ],
+    },
+    {
+      label: "編集",
+      submenu: [
+        { role: "undo", label: "取り消す" },
+        { role: "redo", label: "やり直す" },
+        { type: "separator" },
+        { role: "cut", label: "カット" },
+        { role: "copy", label: "コピー" },
+        { role: "paste", label: "ペースト" },
+        { role: "selectAll", label: "すべてを選択" },
+      ],
+    },
+    {
+      label: "ウインドウ",
+      submenu: [
+        { role: "minimize", label: "しまう" },
+        { role: "close", label: "閉じる" },
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 
   registerIpcHandlers();
 
