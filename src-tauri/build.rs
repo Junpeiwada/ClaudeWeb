@@ -8,5 +8,8 @@ fn main() {
         .to_string();
     println!("cargo:rustc-env=AGENTNEST_ROOT={}", project_root);
 
+    // package.jsonのバージョン変更で再コンパイルをトリガー
+    println!("cargo:rerun-if-changed=../package.json");
+
     tauri_build::build();
 }
