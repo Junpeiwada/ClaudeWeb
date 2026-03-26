@@ -4,3 +4,4 @@ frontend/dist/
 *.tsbuildinfo
 logs/
 debug.log
+test-results/
