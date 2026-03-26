@@ -1,4 +1,4 @@
-import { Box, Typography, Tooltip } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import RepoSelector from "./RepoSelector";
@@ -72,43 +72,46 @@ export default function Header({ repoId, onRepoChange, onNewChat, onResumeSessio
       <RepoSelector value={repoId} onChange={onRepoChange} />
 
       {/* Auto Edit Toggle */}
-      <Tooltip title={autoEdit ? "Auto Edit: ON" : "Auto Edit: OFF"} arrow>
-        <Box
-          onClick={() => onAutoEditChange(!autoEdit)}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            color: autoEdit ? "var(--color-accent)" : "var(--color-text-tertiary)",
-            border: "1px solid",
-            borderColor: autoEdit ? "var(--color-accent)" : "var(--color-border)",
-            borderRadius: "var(--radius-sm)",
-            height: 34,
-            px: 1.2,
-            cursor: "pointer",
-            transition: "all 0.15s ease",
-            userSelect: "none",
-            bgcolor: autoEdit ? "var(--color-accent-soft)" : "transparent",
+      <Box
+        onPointerDown={() => onAutoEditChange(!autoEdit)}
+        role="button"
+        aria-label={autoEdit ? "Auto Edit: ON" : "Auto Edit: OFF"}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 0.5,
+          color: autoEdit ? "var(--color-accent)" : "var(--color-text-tertiary)",
+          border: "1px solid",
+          borderColor: autoEdit ? "var(--color-accent)" : "var(--color-border)",
+          borderRadius: "var(--radius-sm)",
+          height: 34,
+          px: 1.2,
+          cursor: "pointer",
+          transition: "color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease",
+          userSelect: "none",
+          touchAction: "manipulation",
+          bgcolor: autoEdit ? "var(--color-accent-soft)" : "transparent",
+          "@media (hover: hover)": {
             "&:hover": {
               bgcolor: "var(--color-accent-soft)",
               borderColor: "var(--color-accent)",
               color: "var(--color-accent)",
             },
+          },
+        }}
+      >
+        <EditRoundedIcon sx={{ fontSize: 16 }} />
+        <Typography
+          sx={{
+            fontSize: "12px",
+            fontWeight: 500,
+            lineHeight: 1,
+            display: { xs: "none", sm: "block" },
           }}
         >
-          <EditRoundedIcon sx={{ fontSize: 16 }} />
-          <Typography
-            sx={{
-              fontSize: "12px",
-              fontWeight: 500,
-              lineHeight: 1,
-              display: { xs: "none", sm: "block" },
-            }}
-          >
-            Auto
-          </Typography>
-        </Box>
-      </Tooltip>
+          Auto
+        </Typography>
+      </Box>
 
       {/* Session History */}
       {repoId && (
