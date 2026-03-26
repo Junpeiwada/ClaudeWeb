@@ -21,6 +21,7 @@
     "build:mac:arm64": "npm run build && npm run electron:build && electron-builder --mac --arm64 --dir",
     "build:mac:x64": "npm run build && npm run electron:build && electron-builder --mac --x64 --dir",
     "dist:mac": "npm run build && npm run electron:build && electron-builder --mac",
+    "release": "bash scripts/release.sh",
     "M系Macビルドインストール": "export GH_TOKEN=$(gh auth token) && npm run build:mac:arm64 && rm -rf /Applications/AgentNest.app && cp -R release/mac-arm64/AgentNest.app /Applications/ && echo \"正常完了 バージョン $(node -p \"require('./package.json').version\")\" && say -v Kyoko \"AgentNestのビルドとインストールが完了しました。バージョン$(node -p \"require('./package.json').version\")\" || (echo \"エラーが発生しました\" && say -v Kyoko \"AgentNestでエラーが発生しました\" && exit 1)",
     "IntelMacビルドインストール": "export GH_TOKEN=$(gh auth token) && npm run build:mac:x64 && rm -rf /Applications/AgentNest.app && cp -R release/mac/AgentNest.app /Applications/ && echo \"正常完了 バージョン $(node -p \"require('./package.json').version\")\" && say -v Kyoko \"AgentNestのビルドとインストールが完了しました。バージョン$(node -p \"require('./package.json').version\")\" || (echo \"エラーが発生しました\" && say -v Kyoko \"AgentNestでエラーが発生しました\" && exit 1)"
   },
@@ -28,6 +29,7 @@
     "@anthropic-ai/claude-code": "^1.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
+    "electron-updater": "^6.3.0",
     "express": "^5.1.0",
     "tsx": "^4.19.0"
   },
@@ -65,6 +67,11 @@
     },
     "asarUnpack": [
       "node_modules/@anthropic-ai/**/*"
-    ]
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "Junpeiwada",
+      "repo": "AgentNest"
+    }
   }
 }

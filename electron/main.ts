@@ -6,6 +6,7 @@ import path from "path";
 import { getConfig, setConfig } from "./config-store";
 import { ServerManager } from "./server-manager";
 import { createTray, destroyTray } from "./tray";
+import { initializeAutoUpdater, registerUpdaterHandlers } from "./updater";
 
 const serverManager = new ServerManager();
 let mainWindow: BrowserWindow | null = null;
@@ -171,6 +172,7 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 
   registerIpcHandlers();
+  registerUpdaterHandlers();
 
   mainWindow = createWindow();
 
@@ -203,6 +205,9 @@ app.whenReady().then(async () => {
       await serverManager.stop();
     },
   });
+
+  // 自動更新チェック
+  initializeAutoUpdater();
 
   // サーバー自動起動
   const config = getConfig();

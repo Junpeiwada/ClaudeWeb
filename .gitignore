@@ -8,6 +8,7 @@ debug.log
 test-results/
 dist-electron/
 dist-server/
+gh-token.json
 release/
 build/icon.iconset/
 build/icon.svg

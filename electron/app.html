@@ -237,6 +237,57 @@
       font-size: 12px;
       text-align: center;
     }
+
+    /* 更新セクション */
+    .update-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .update-section .version {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+    .update-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .update-status .check-mark { color: var(--green); }
+    .update-status .error-text { color: var(--red); }
+    .btn-update {
+      padding: 5px 14px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+    .progress-bar {
+      width: 120px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -248,6 +299,12 @@
     <!-- ロゴ -->
     <div class="logo">C</div>
     <div class="app-name">AgentNest</div>
+
+    <!-- バージョン & 更新 -->
+    <div class="update-section">
+      <span class="version" id="appVersion"></span>
+      <div class="update-status" id="updateStatus"></div>
+    </div>
 
     <!-- ステータス -->
     <div class="status-section">
@@ -501,12 +558,63 @@
       render();
     });
 
+    // --- Update UI ---
+    const appVersion = document.getElementById("appVersion");
+    const updateStatusEl = document.getElementById("updateStatus");
+
+    function renderUpdateStatus(status) {
+      switch (status.state) {
+        case "idle":
+          updateStatusEl.innerHTML = `<button class="btn-secondary btn-update" onclick="handleCheckUpdate()">更新を確認</button>`;
+          break;
+        case "checking":
+          updateStatusEl.innerHTML = `<div class="spinner"></div> 確認中...`;
+          break;
+        case "available":
+          updateStatusEl.innerHTML = `v${status.version} をダウンロード中...`;
+          break;
+        case "downloading":
+          updateStatusEl.innerHTML = `
+            <div class="progress-bar"><div class="progress-bar-fill" style="width:${status.percent}%"></div></div>
+            ${status.percent}%`;
+          break;
+        case "downloaded":
+          updateStatusEl.innerHTML = `<span class="check-mark">●</span> v${status.version} 準備完了 <button class="btn-primary btn-update" onclick="handleInstallUpdate()">再起動して更新</button>`;
+          break;
+        case "up-to-date":
+          updateStatusEl.innerHTML = `<span class="check-mark">✓</span> 最新バージョンです`;
+          break;
+        case "error":
+          updateStatusEl.innerHTML = `<span class="error-text">更新エラー</span> <button class="btn-secondary btn-update" onclick="handleCheckUpdate()">再試行</button>`;
+          break;
+        default:
+          updateStatusEl.innerHTML = `<button class="btn-secondary btn-update" onclick="handleCheckUpdate()">更新を確認</button>`;
+      }
+    }
+
+    async function handleCheckUpdate() {
+      renderUpdateStatus({ state: "checking" });
+      await api.checkForUpdate();
+    }
+
+    async function handleInstallUpdate() {
+      await api.installUpdate();
+    }
+
     // --- Init ---
     async function init() {
       currentConfig = await api.getConfig();
       const status = await api.getServerStatus();
       isRunning = status.running;
       render();
+
+      // バージョン表示
+      const version = await api.getAppVersion();
+      appVersion.textContent = `v${version}`;
+
+      // 更新状態を取得
+      const uStatus = await api.getUpdateStatus();
+      renderUpdateStatus(uStatus);
 
       // 未設定なら設定フォームを最初から表示
       if (!currentConfig.baseProjectDir) {
@@ -522,6 +630,11 @@
         statusError.textContent = status.error;
       }
       render();
+    });
+
+    // 更新状態変更リスナー
+    api.onUpdateStatusChange((status) => {
+      renderUpdateStatus(status);
     });
 
     init();
