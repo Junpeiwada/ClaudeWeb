@@ -39,6 +39,7 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
   const [data, setData] = useState<FileContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [fetchTarget, setFetchTarget] = useState({ repoId, filePath });
 
   // deps変更時にeffect外でリセット（lint-safe）
@@ -52,10 +53,15 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
 
   useEffect(() => {
     let cancelled = false;
+    setFetchError(false);
     fetch(`/api/repos/${encodeURIComponent(repoId)}/file/${filePath.split("/").map(encodeURIComponent).join("/")}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((result) => { if (!cancelled) setData(result); })
-      .catch(() => { if (!cancelled) setData(null); })
+      .catch(() => {
+        if (cancelled) return;
+        setData(null);
+        setFetchError(true);
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [repoId, filePath]);
@@ -117,7 +123,9 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
           </Box>
         ) : !data ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4, color: "var(--color-text-secondary)" }}>
-            <Typography fontSize="13px">ファイルを読み込めませんでした</Typography>
+            <Typography fontSize="13px">
+              {fetchError ? "サーバーに接続できません" : "ファイルを読み込めませんでした"}
+            </Typography>
           </Box>
         ) : data.type === "binary" ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4, color: "var(--color-text-tertiary)" }}>

@@ -18,13 +18,14 @@ interface Props {
 export default function RepoSelector({ value, onChange }: Props) {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [open, setOpen] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/repos")
-      .then((r) => r.json())
-      .then(setRepos)
-      .catch(console.error);
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+      .then((data) => { setRepos(data); setFetchError(false); })
+      .catch(() => setFetchError(true));
   }, []);
 
   useEffect(() => {
@@ -105,7 +106,19 @@ export default function RepoSelector({ value, onChange }: Props) {
             overflow: "auto",
           }}
         >
-          {repos.map((r) => (
+          {fetchError ? (
+            <Box sx={{ px: 1.5, py: 2, textAlign: "center" }}>
+              <Typography sx={{ fontSize: "13px", color: "var(--color-text-tertiary)" }}>
+                サーバーに接続できません
+              </Typography>
+            </Box>
+          ) : repos.length === 0 ? (
+            <Box sx={{ px: 1.5, py: 2, textAlign: "center" }}>
+              <Typography sx={{ fontSize: "13px", color: "var(--color-text-tertiary)" }}>
+                リポジトリがありません
+              </Typography>
+            </Box>
+          ) : repos.map((r) => (
             <Box
               key={r.id}
               onClick={() => {

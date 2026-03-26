@@ -31,14 +31,16 @@ export default function SessionHistory({ repoId, onSelect }: Props) {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [fetchError, setFetchError] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!repoId || !open) return;
+    setFetchError(false);
     fetch(`/api/sessions/${encodeURIComponent(repoId)}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then(setSessions)
-      .catch(() => setSessions([]));
+      .catch(() => { setSessions([]); setFetchError(true); });
   }, [repoId, open]);
 
   useEffect(() => {
@@ -148,7 +150,7 @@ export default function SessionHistory({ repoId, onSelect }: Props) {
                   py: 3,
                 }}
               >
-                {sessions.length === 0 ? "No sessions" : "No results"}
+                {fetchError ? "サーバーに接続できません" : sessions.length === 0 ? "No sessions" : "No results"}
               </Typography>
             ) : (
               filtered.map((s) => (

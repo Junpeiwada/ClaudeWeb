@@ -55,10 +55,12 @@ export default function FileExplorer({ repoId, onSwitchToChat }: Props) {
   const [loading, setLoading] = useState(false);
   const [currentDir, setCurrentDir] = useState("");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState(false);
 
   const fetchDir = useCallback(async (dir: string) => {
     if (!repoId) return;
     setLoading(true);
+    setFetchError(false);
     try {
       const params = dir ? `?dir=${encodeURIComponent(dir)}` : "";
       const res = await fetch(`/api/repos/${encodeURIComponent(repoId)}/files${params}`);
@@ -68,6 +70,7 @@ export default function FileExplorer({ repoId, onSwitchToChat }: Props) {
       setCurrentDir(dir);
     } catch {
       setEntries([]);
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -164,7 +167,9 @@ export default function FileExplorer({ repoId, onSwitchToChat }: Props) {
           </Box>
         ) : entries.length === 0 ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4, color: "var(--color-text-tertiary)" }}>
-            <Typography fontSize="13px">空のディレクトリです</Typography>
+            <Typography fontSize="13px">
+              {fetchError ? "サーバーに接続できません" : "空のディレクトリです"}
+            </Typography>
           </Box>
         ) : (
           <List disablePadding>

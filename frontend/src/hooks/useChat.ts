@@ -280,6 +280,20 @@ export function useChat(
           signal: controller.signal,
         });
 
+        if (!res.ok) {
+          let errorMessage = `サーバーエラー (${res.status})`;
+          try {
+            const body = await res.text();
+            if (body) errorMessage += `\n${body}`;
+          } catch { /* ignore */ }
+          setMessages((prev) =>
+            updateLastAssistant(prev, (last) =>
+              setAssistantError(last, { kind: "generic", message: errorMessage })
+            )
+          );
+          return;
+        }
+
         const reader = res.body?.getReader();
         if (!reader) return;
 
@@ -290,27 +304,20 @@ export function useChat(
         } else {
           // Connection error — attempt reconnect
           setIsReconnecting(true);
-          setActivity("Reconnecting...");
+          setActivity("再接続中...");
           const reconnected = await reconnectWithRetries(controller.signal);
           setIsReconnecting(false);
 
           if (!reconnected) {
-            // All retries failed
-            setMessages((prev) => {
-              const updated = [...prev];
-              const last = updated[updated.length - 1];
-              if (last?.role === "assistant") {
-                const prefix =
-                  last.content.trim().length > 0
-                    ? last.content + "\n\n"
-                    : "";
-                updated[updated.length - 1] = {
-                  ...last,
-                  content: `${prefix}Connection lost. Reconnection failed.`,
-                };
-              }
-              return updated;
-            });
+            // All retries failed — show error
+            setMessages((prev) =>
+              updateLastAssistant(prev, (last) =>
+                setAssistantError(last, {
+                  kind: "generic",
+                  message: "サーバーに接続できません。サーバーが起動しているか確認してください。",
+                })
+              )
+            );
           }
         }
       } finally {
