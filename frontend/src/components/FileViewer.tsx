@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { Box, Typography, IconButton, CircularProgress, Tooltip, Fab } from "@mui/material";
+import { Box, Typography, IconButton, CircularProgress, Tooltip } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
-import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -17,7 +16,6 @@ interface Props {
   repoId: string;
   filePath: string;
   onClose: () => void;
-  onSwitchToChat: () => void;
 }
 
 function resolveImageSrc(src: string, repoId: string, filePath: string): string {
@@ -35,7 +33,7 @@ function resolveImageSrc(src: string, repoId: string, filePath: string): string 
   return `/api/repos/${encodeURIComponent(repoId)}/raw/${resolved.map(encodeURIComponent).join("/")}`;
 }
 
-export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }: Props) {
+export default function FileViewer({ repoId, filePath, onClose }: Props) {
   const [data, setData] = useState<FileContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -233,24 +231,6 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
           </Box>
         )}
 
-        {/* チャットで質問FAB */}
-        {!loading && data && (
-          <Fab
-            size="medium"
-            onClick={onSwitchToChat}
-            sx={(theme) => ({
-              position: "sticky",
-              bottom: 16,
-              float: "right",
-              mr: 2,
-              bgcolor: theme.palette.accent.main,
-              color: theme.palette.onAccent,
-              "&:hover": { bgcolor: theme.palette.accent.hover },
-            })}
-          >
-            <ChatRoundedIcon />
-          </Fab>
-        )}
       </Box>
     </Box>
   );

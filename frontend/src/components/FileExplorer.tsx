@@ -135,7 +135,6 @@ export default function FileExplorer({ repoId, currentPath, onNavigate, onSwitch
             : "";
           onNavigate(parentDir);
         }}
-        onSwitchToChat={onSwitchToChat}
       />
     );
   }
