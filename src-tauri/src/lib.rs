@@ -102,9 +102,14 @@ pub fn run() {
                 if cfg.auto_start_server && cfg.base_project_dir.is_some() {
                     let state = app_handle.state::<SharedServerState>();
                     let base_dir = cfg.base_project_dir.unwrap();
-                    match server::start_server(&app_handle, &state, &base_dir, cfg.port).await {
+                    let port = cfg.port;
+                    match server::start_server(&app_handle, &state, &base_dir, port).await {
                         Ok(()) => {
                             emit_status(&app_handle, &state).await;
+                            // macOS アクセス許可ダイアログをアプリ起動時に即時表示するため
+                            // サーバー起動直後にリポジトリ一覧を取得する
+                            let url = format!("http://127.0.0.1:{}/api/repos", port);
+                            let _ = reqwest::get(&url).await;
                         }
                         Err(e) => {
                             eprintln!("自動起動失敗: {}", e);
