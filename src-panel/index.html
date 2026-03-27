@@ -312,6 +312,7 @@
     <div class="info-section" id="infoSection">
       <div class="update-section">
         <span class="version" id="appVersion"></span>
+        <button class="btn-secondary btn-update" id="checkUpdateBtn">更新を確認</button>
         <div class="update-status" id="updateStatus"></div>
       </div>
       <div class="info-row">
@@ -551,11 +552,27 @@
     const appVersionEl = document.getElementById("appVersion");
     const updateStatusEl = document.getElementById("updateStatus");
 
+    const checkUpdateBtn = document.getElementById("checkUpdateBtn");
+    checkUpdateBtn.addEventListener("click", handleCheckUpdate);
+
     function renderUpdateStatus(status) {
+      const isDownloaded = status.state === "downloaded";
+      const isBusyState = status.state === "checking" || status.state === "available" || status.state === "downloading";
+
+      // ボタンのラベル・スタイル・disabled切り替え
+      if (isDownloaded) {
+        checkUpdateBtn.textContent = "再起動して更新";
+        checkUpdateBtn.className = "btn-primary btn-update";
+      } else {
+        checkUpdateBtn.textContent = "更新を確認";
+        checkUpdateBtn.className = "btn-secondary btn-update";
+      }
+      checkUpdateBtn.disabled = isBusyState;
+
+      // ステータステキスト
       switch (status.state) {
         case "idle":
-          updateStatusEl.innerHTML = `<button class="btn-secondary btn-update" id="checkUpdateBtn">更新を確認</button>`;
-          document.getElementById("checkUpdateBtn")?.addEventListener("click", handleCheckUpdate);
+          updateStatusEl.innerHTML = "";
           break;
         case "checking":
           updateStatusEl.innerHTML = `<div class="spinner"></div> 確認中...`;
@@ -569,23 +586,33 @@
             ${status.percent}%`;
           break;
         case "downloaded":
-          updateStatusEl.innerHTML = `<span class="check-mark">●</span> v${status.version} 準備完了<button class="btn-primary btn-update" id="installUpdateBtn">再起動して更新</button>`;
-          document.getElementById("installUpdateBtn")?.addEventListener("click", handleInstallUpdate);
+          updateStatusEl.innerHTML = `<span class="check-mark">●</span> v${status.version} 準備完了`;
           break;
         case "up-to-date":
           updateStatusEl.innerHTML = `<span class="check-mark">✓</span> 最新バージョンです`;
           break;
         case "error":
-          updateStatusEl.innerHTML = `<span class="error-text">更新エラー</span><button class="btn-secondary btn-update" id="retryUpdateBtn">再試行</button>`;
-          document.getElementById("retryUpdateBtn")?.addEventListener("click", handleCheckUpdate);
+          updateStatusEl.innerHTML = `<span class="error-text">更新エラー</span>`;
           break;
         default:
-          updateStatusEl.innerHTML = `<button class="btn-secondary btn-update" id="checkUpdateBtn2">更新を確認</button>`;
-          document.getElementById("checkUpdateBtn2")?.addEventListener("click", handleCheckUpdate);
+          updateStatusEl.innerHTML = "";
       }
     }
 
+    let updateReady = false;
+
     async function handleCheckUpdate() {
+      // ダウンロード済みなら再起動
+      if (updateReady) {
+        try {
+          const { relaunch } = window.__TAURI__.process;
+          await relaunch();
+        } catch (e) {
+          console.error("Relaunch error:", e);
+        }
+        return;
+      }
+
       renderUpdateStatus({ state: "checking" });
       try {
         const { check } = window.__TAURI__.updater;
@@ -601,6 +628,7 @@
               renderUpdateStatus({ state: "downloaded", version: update.version });
             }
           });
+          updateReady = true;
           renderUpdateStatus({ state: "downloaded", version: update.version });
         } else {
           renderUpdateStatus({ state: "up-to-date" });
@@ -608,15 +636,6 @@
       } catch (e) {
         console.error("Update error:", e);
         renderUpdateStatus({ state: "error", message: String(e) });
-      }
-    }
-
-    async function handleInstallUpdate() {
-      try {
-        const { relaunch } = window.__TAURI__.process;
-        await relaunch();
-      } catch (e) {
-        console.error("Relaunch error:", e);
       }
     }
 
