@@ -62,4 +62,15 @@ for (const pkg of packagesToCopy) {
   }
 }
 
+// 3. フロントエンドビルド成果物をdist-server/frontend/dist/にコピー
+// （Tauriバンドル内でサーバーがフロントエンドを配信できるようにする）
+const frontendDist = resolve(root, "frontend/dist");
+const destFrontend = resolve(outDir, "frontend/dist");
+if (existsSync(frontendDist)) {
+  cpSync(frontendDist, destFrontend, { recursive: true });
+  console.log("  コピー: frontend/dist → dist-server/frontend/dist");
+} else {
+  console.warn("  警告: frontend/dist が存在しません。先にビルド:フロントエンドを実行してください");
+}
+
 console.log("サーバービルド完了 → dist-server/");

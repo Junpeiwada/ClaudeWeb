@@ -2,6 +2,7 @@ import "./config.js"; // Load .env before anything else
 import express from "express";
 import cors from "cors";
 import path from "path";
+import { existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { execFileSync } from "child_process";
 import reposRouter from "./routes/repos.js";
@@ -30,7 +31,11 @@ app.use(sessionsRouter);
 app.use(filesRouter);
 
 // Serve frontend static files in production
-const frontendDist = path.join(__dirname, "../frontend/dist");
+// バンドル版（dist-server/frontend/dist/）と開発版（../frontend/dist/）の両方に対応
+const frontendDistBundled = path.join(__dirname, "frontend/dist");
+const frontendDist = existsSync(frontendDistBundled)
+  ? frontendDistBundled
+  : path.join(__dirname, "../frontend/dist");
 // assetsはハッシュ付きなので長期キャッシュOK、HTMLはキャッシュしない
 app.use("/assets", express.static(path.join(frontendDist, "assets"), { maxAge: "1y" }));
 app.use(express.static(frontendDist, { etag: false, lastModified: false, maxAge: 0 }));
