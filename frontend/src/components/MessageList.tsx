@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Box, Typography } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -10,11 +10,21 @@ interface Props {
   repoId?: string;
 }
 
+const AUTO_SCROLL_THRESHOLD = 80;
+
 export default function MessageList({ messages, isLoading, repoId }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScroll = useRef(true);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    shouldAutoScroll.current = distanceFromBottom <= AUTO_SCROLL_THRESHOLD;
+  }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
+    if (shouldAutoScroll.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
@@ -72,6 +82,7 @@ export default function MessageList({ messages, isLoading, repoId }: Props) {
   return (
     <Box
       ref={scrollRef}
+      onScroll={handleScroll}
       sx={{
         flex: 1,
         overflow: "auto",
