@@ -225,6 +225,10 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading }: Pr
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
+            if (e.key === "Escape" && isLoading) {
+              onStop();
+              return;
+            }
             if (e.nativeEvent.isComposing) return;
             if (isMobile) {
               // iOS/Android: Enterで送信
