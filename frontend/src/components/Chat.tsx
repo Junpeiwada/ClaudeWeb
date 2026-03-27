@@ -14,9 +14,10 @@ interface Props {
   initialMessages?: Message[];
   initialSessionId?: string | null;
   resetNonce?: number;
+  visible?: boolean;
 }
 
-export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessages, initialSessionId, resetNonce }: Props) {
+export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessages, initialSessionId, resetNonce, visible }: Props) {
   const conversationKey = initialSessionId != null
     ? `session:${initialSessionId}`
     : `new:${resetNonce ?? 0}`;
@@ -77,6 +78,7 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
           onStop={handleStop}
           disabled={!repoId || !!pendingPermission}
           isLoading={isLoading}
+          visible={visible}
         />
       </Box>
 

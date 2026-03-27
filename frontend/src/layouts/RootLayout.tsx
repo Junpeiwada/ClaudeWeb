@@ -135,6 +135,7 @@ export default function RootLayout() {
             key={chatKey}
             repoId={repoId}
             autoEdit={autoEdit}
+            visible={activeTab === "chat"}
             onSessionIdChange={(sessionId) => {
               // URL同期: replaceStateでReact Routerの再レンダリングを起こさない
               if (sessionId) {

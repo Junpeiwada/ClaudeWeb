@@ -11,6 +11,7 @@ interface Props {
   onStop: () => void;
   disabled: boolean;
   isLoading: boolean;
+  visible?: boolean;
 }
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
@@ -33,11 +34,21 @@ function parseDataUrl(dataUrl: string): { data: string; mediaType: string } {
 
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-export default function MessageInput({ onSend, onStop, disabled, isLoading }: Props) {
+export default function MessageInput({ onSend, onStop, disabled, isLoading, visible }: Props) {
   const [text, setText] = useState("");
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // チャットタブが表示されたときにテキストボックスにフォーカス
+  useEffect(() => {
+    if (visible && !disabled) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    }
+  }, [visible, disabled]);
 
   // visualViewportを使用したキーボード検出とセーフエリア調整
   useEffect(() => {
@@ -220,6 +231,7 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading }: Pr
         />
 
         <InputBase
+          inputRef={inputRef}
           fullWidth
           placeholder={disabled && !isLoading ? "リポジトリを選択してください" : "Message AgentNest..."}
           value={text}
