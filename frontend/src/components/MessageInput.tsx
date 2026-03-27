@@ -31,6 +31,8 @@ function parseDataUrl(dataUrl: string): { data: string; mediaType: string } {
   return { mediaType: match[1], data: match[2] };
 }
 
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
 export default function MessageInput({ onSend, onStop, disabled, isLoading }: Props) {
   const [text, setText] = useState("");
   const [images, setImages] = useState<ImageAttachment[]>([]);
@@ -223,9 +225,19 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading }: Pr
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              handleSend();
+            if (e.nativeEvent.isComposing) return;
+            if (isMobile) {
+              // iOS/Android: Enterで送信
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            } else {
+              // Mac/PC: Command+Enter (Mac) または Ctrl+Enter (Windows) で送信
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                handleSend();
+              }
             }
           }}
           onPaste={handlePaste}
