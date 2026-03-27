@@ -1,9 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Box, Typography, IconButton, CircularProgress, Tooltip } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+const MDEditor = lazy(() => import("@uiw/react-md-editor"));
 
 interface FileContent {
   type: "markdown" | "code" | "image" | "binary";
@@ -39,12 +44,16 @@ export default function FileViewer({ repoId, filePath, onClose }: Props) {
   const [copied, setCopied] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [fetchTarget, setFetchTarget] = useState({ repoId, filePath });
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [saving, setSaving] = useState(false);
 
   // deps変更時にeffect外でリセット（lint-safe）
   if (fetchTarget.repoId !== repoId || fetchTarget.filePath !== filePath) {
     setFetchTarget({ repoId, filePath });
     setData(null);
     setLoading(true);
+    setEditing(false);
   }
 
   const fileName = filePath.split("/").pop() || filePath;
@@ -69,6 +78,39 @@ export default function FileViewer({ repoId, filePath, onClose }: Props) {
       navigator.clipboard.writeText(data.content);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  const handleEdit = () => {
+    if (data?.content) {
+      setEditContent(data.content);
+      setEditing(true);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditing(false);
+    setEditContent("");
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(
+        `/api/repos/${encodeURIComponent(repoId)}/file/${filePath.split("/").map(encodeURIComponent).join("/")}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: editContent }),
+        }
+      );
+      if (!res.ok) throw new Error();
+      setData({ ...data!, content: editContent });
+      setEditing(false);
+    } catch {
+      alert("保存に失敗しました");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -104,12 +146,38 @@ export default function FileViewer({ repoId, filePath, onClose }: Props) {
         >
           {fileName}
         </Typography>
-        {data?.content && data.type !== "image" && (
-          <Tooltip title={copied ? "コピーしました" : "コピー"}>
-            <IconButton onClick={handleCopy} size="small" sx={{ color: "text.secondary" }}>
-              <ContentCopyRoundedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
+        {editing ? (
+          <>
+            <Tooltip title="保存">
+              <span>
+                <IconButton onClick={handleSave} size="small" disabled={saving} sx={{ color: "success.main" }}>
+                  {saving ? <CircularProgress size={16} /> : <SaveRoundedIcon sx={{ fontSize: 16 }} />}
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="キャンセル">
+              <IconButton onClick={handleCancel} size="small" sx={{ color: "text.secondary" }}>
+                <CloseRoundedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          </>
+        ) : (
+          <>
+            {data?.type === "markdown" && data.content && (
+              <Tooltip title="編集">
+                <IconButton onClick={handleEdit} size="small" sx={{ color: "text.secondary" }}>
+                  <EditRoundedIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {data?.content && data.type !== "image" && (
+              <Tooltip title={copied ? "コピーしました" : "コピー"}>
+                <IconButton onClick={handleCopy} size="small" sx={{ color: "text.secondary" }}>
+                  <ContentCopyRoundedIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </>
         )}
       </Box>
 
@@ -137,6 +205,19 @@ export default function FileViewer({ repoId, filePath, onClose }: Props) {
               style={{ maxWidth: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: 8 }}
             />
           </Box>
+        ) : data.type === "markdown" && editing ? (
+          <Suspense fallback={<Box sx={{ display: "flex", justifyContent: "center", py: 4 }}><CircularProgress size={28} /></Box>}>
+            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }} data-color-mode="dark">
+              <MDEditor
+                value={editContent}
+                onChange={(v) => setEditContent(v || "")}
+                preview="edit"
+                height="100%"
+                visibleDragbar={false}
+                style={{ flex: 1 }}
+              />
+            </Box>
+          </Suspense>
         ) : data.type === "markdown" ? (
           <Box
             className="markdown-viewer"

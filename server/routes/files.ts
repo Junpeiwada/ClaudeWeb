@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { readdir, stat, readFile } from "fs/promises";
+import { readdir, stat, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { BASE_DIR } from "../config.js";
 
@@ -119,6 +119,35 @@ router.get("/api/repos/:repoId/file/{*filePath}", async (req, res) => {
     });
   } catch {
     res.status(500).json({ error: "Failed to read file" });
+  }
+});
+
+// ファイル保存
+router.put("/api/repos/:repoId/file/{*filePath}", async (req, res) => {
+  const rawFilePath = req.params.filePath;
+  const filePath = Array.isArray(rawFilePath) ? rawFilePath.join("/") : rawFilePath;
+  if (!filePath) return res.status(400).json({ error: "File path required" });
+
+  const repoPath = path.join(BASE_DIR, req.params.repoId);
+  const fullPath = path.join(repoPath, filePath);
+
+  if (!fullPath.startsWith(repoPath)) {
+    return res.status(403).json({ error: "Access denied" });
+  }
+
+  const { content } = req.body;
+  if (typeof content !== "string") {
+    return res.status(400).json({ error: "content is required" });
+  }
+
+  try {
+    const s = await stat(fullPath);
+    if (!s.isFile()) return res.status(400).json({ error: "Not a file" });
+
+    await writeFile(fullPath, content, "utf-8");
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Failed to save file" });
   }
 });
 
