@@ -82,20 +82,42 @@ npx tauri signer generate -w ~/.tauri/AgentNest.key
 
 ## アーキテクチャ
 
-ブラウザからClaude Codeを操作するWebインターフェース。Express APIサーバーがClaude Code SDKを呼び出し、SSE（Server-Sent Events）でフロントエンドにリアルタイムストリーミングする構成。
+ブラウザからClaude Codeを操作するWebインターフェース。Express APIサーバーがClaude Code SDKを呼び出し、SSE（Server-Sent Events）でフロントエンドにリアルタイムストリーミングする構成。Tauriでデスクトップアプリとしても配布。
 
-### サーバー（`server/`）
+### 全体構成
 
-- **`index.ts`** — Expressアプリ起動、静的ファイル配信、ルートマウント
-- **`claude/executor.ts`** — 中核ロジック。Claude Code SDK `query()` のラッパー。SSEイベント送信、セッション状態管理、権限承認フロー、autoEdit機能、ログ出力を担当
-- **`claude/commandExpander.ts`** — `.claude/commands/` 配下のスラッシュコマンド展開
-- **`routes/`** — 各APIエンドポイント（chat, repos, sessions, files, permission, reconnect, status）
+```
+AgentNest/
+├── server/           # Express APIサーバー
+│   ├── index.ts      # アプリ起動、静的ファイル配信、ルートマウント
+│   ├── config.ts     # 環境設定（BASE_PROJECT_DIR等）
+│   ├── claude/
+│   │   ├── executor.ts        # 中核。SDK query()ラッパー、SSE送信、セッション管理、権限フロー
+│   │   └── commandExpander.ts # .claude/commands/ スラッシュコマンド展開
+│   └── routes/       # chat, repos, sessions, files, permission, reconnect, status
+├── frontend/         # React SPA
+│   └── src/
+│       ├── hooks/useChat.ts   # SSEストリーム処理・再接続。フロントエンドの中核
+│       ├── components/        # Chat, MessageList, MessageInput, PermissionDialog 等
+│       ├── pages/             # ChatPlaceholder, FilesPage, RepoRedirect
+│       ├── layouts/           # RootLayout, MinimalLayout
+│       └── router.tsx         # React Router v7
+├── src-tauri/        # Tauriデスクトップアプリ（Rust）
+│   ├── src/server.rs # 内蔵Expressサーバーのプロセス管理
+│   └── tauri.conf.json
+└── tests/            # Playwright E2Eテスト
+```
 
-### フロントエンド（`frontend/`）
+### フロントエンドルーティング（React Router v7）
 
-- React 19 + Vite + MUI 7
-- **`hooks/useChat.ts`** — SSEストリーム処理、再接続ロジック。フロントエンドの中核
-- **`components/`** — Chat, MessageList, MessageInput, Header, FileExplorer, FileViewer, PermissionDialog, RepoSelector, SessionHistory 等
+```
+/ (MinimalLayout) → RepoRedirect（リポジトリ自動選択）
+/:repo (RootLayout)
+  ├── /chat            # チャット画面
+  ├── /chat/:sessionId # セッション復元
+  ├── /files           # ファイルブラウザ
+  └── /files/*         # ネストされたファイルパス
+```
 
 ### 主要な通信フロー
 
@@ -105,12 +127,20 @@ npx tauri signer generate -w ~/.tauri/AgentNest.key
 4. ツール実行時に権限要求 → `permission` イベント → フロントエンドでダイアログ表示 → POST `/api/permission` で承認/拒否
 5. 切断時は `/api/reconnect` で状態スナップショットを取得し再接続（最大3回リトライ）
 
+### Tauriデスクトップアプリ
+
+- Expressサーバーをバンドルしたバイナリとして内蔵し、アプリ起動時に子プロセスとして起動（`src-tauri/src/server.rs`）
+- フロントエンドはTauriウィンドウ内で表示
+- ビルドパイプライン: フロントエンドビルド → サーバーバンドル（`scripts/build-server.mjs`） → Tauriビルド（署名付き）
+- 自動更新: GitHub Releasesの `latest.json` を参照、署名検証あり
+
 ### 技術スタック
 
 | レイヤー | 技術 |
 |---------|------|
 | フロントエンド | React 19, Vite 8, MUI 7, react-markdown |
 | バックエンド | Express 5, tsx (実行), TypeScript |
+| デスクトップ | Tauri 2 (Rust) |
 | AI | @anthropic-ai/claude-code SDK |
 | リアルタイム通信 | Server-Sent Events |
 | テスト | Playwright（E2E、Chromiumのみ） |
@@ -120,5 +150,5 @@ npx tauri signer generate -w ~/.tauri/AgentNest.key
 - セッション状態はサーバーのインメモリ変数 `currentSession` で管理（シングルユーザー前提）
 - 開発時はViteプロキシ（`/api` → `localhost:3000`）でCORS回避
 - プロダクションではExpressがフロントエンドの静的ファイルも配信
-- リポジトリのベースパスは環境変数 `BASE_PROJECT_DIR`（`.env`）で設定
+- リポジトリのベースパスは環境変数 `BASE_PROJECT_DIR`（`.env`で設定、`.env.example`参照）
 - テストはAPIモックベース（`page.route()` でSSEレスポンスをモック）
