@@ -47,28 +47,16 @@ export default function Header({ repoId, onRepoChange, onNewChat, onResumeSessio
         }}
       >
         <Box
-          sx={(theme) => ({
+          component="img"
+          src="/favicon-32x32.png"
+          alt="AgentNest"
+          sx={{
             width: 28,
             height: 28,
             borderRadius: "var(--radius-sm)",
-            background: theme.palette.accent.gradient,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             flexShrink: 0,
-          })}
-        >
-          <Typography
-            sx={(theme) => ({
-              color: theme.palette.onAccent,
-              fontSize: "14px",
-              fontWeight: 600,
-              lineHeight: 1,
-            })}
-          >
-            C
-          </Typography>
-        </Box>
+          }}
+        />
         <Typography
           sx={{
             fontSize: "15px",

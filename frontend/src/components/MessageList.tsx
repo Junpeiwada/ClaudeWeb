@@ -43,28 +43,16 @@ export default function MessageList({ messages, isLoading, repoId }: Props) {
         }}
       >
         <Box
-          sx={(theme) => ({
+          component="img"
+          src="/icon-96.png"
+          alt="AgentNest"
+          sx={{
             width: 48,
             height: 48,
             borderRadius: "var(--radius-md)",
-            background: theme.palette.accent.gradient,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             mb: 2.5,
-          })}
-        >
-          <Typography
-            sx={(theme) => ({
-              color: theme.palette.onAccent,
-              fontSize: "22px",
-              fontWeight: 600,
-              lineHeight: 1,
-            })}
-          >
-            C
-          </Typography>
-        </Box>
+          }}
+        />
         <Typography
           sx={{
             fontSize: "15px",
