@@ -33,24 +33,24 @@ export default function MessageList({ messages, isLoading, repoId }: Props) {
         }}
       >
         <Box
-          sx={{
+          sx={(theme) => ({
             width: 48,
             height: 48,
             borderRadius: "var(--radius-md)",
-            background: "linear-gradient(135deg, #C96442 0%, #D4845E 100%)",
+            background: theme.palette.accent.gradient,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             mb: 2.5,
-          }}
+          })}
         >
           <Typography
-            sx={{
-              color: "#fff",
+            sx={(theme) => ({
+              color: theme.palette.onAccent,
               fontSize: "22px",
               fontWeight: 600,
               lineHeight: 1,
-            }}
+            })}
           >
             C
           </Typography>
@@ -58,7 +58,7 @@ export default function MessageList({ messages, isLoading, repoId }: Props) {
         <Typography
           sx={{
             fontSize: "15px",
-            color: "var(--color-text-secondary)",
+            color: "text.secondary",
             textAlign: "center",
             lineHeight: 1.6,
           }}
@@ -120,10 +120,10 @@ function UserMessage({ content, images }: { content: string; images?: Message["i
       }}
     >
       <Box
-        sx={{
+        sx={(theme) => ({
           maxWidth: "85%",
-          bgcolor: "var(--color-user-bubble)",
-          color: "var(--color-text)",
+          bgcolor: theme.palette.userBubble,
+          color: "text.primary",
           px: 2,
           py: 1.25,
           borderRadius: "var(--radius-lg)",
@@ -132,7 +132,7 @@ function UserMessage({ content, images }: { content: string; images?: Message["i
           lineHeight: 1.6,
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
-        }}
+        })}
       >
         {images && images.length > 0 && (
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: content ? 1 : 0 }}>
@@ -183,14 +183,14 @@ function AssistantMessage({
         {[0, 1, 2].map((i) => (
           <Box
             key={i}
-            sx={{
+            sx={(theme) => ({
               width: 6,
               height: 6,
               borderRadius: "50%",
-              bgcolor: "var(--color-text-tertiary)",
+              bgcolor: theme.palette.textTertiary,
               animation: "pulse-dot 1.4s ease-in-out infinite",
               animationDelay: `${i * 0.2}s`,
-            }}
+            })}
           />
         ))}
       </Box>
@@ -199,11 +199,11 @@ function AssistantMessage({
 
   return (
     <Box
-      sx={{
+      sx={(theme) => ({
         animation: "fade-in-up 0.25s ease",
         fontSize: "14.5px",
         lineHeight: 1.7,
-        color: "var(--color-text)",
+        color: "text.primary",
         /* Markdown styles */
         "& p": {
           m: 0,
@@ -222,19 +222,19 @@ function AssistantMessage({
         "& code": {
           fontFamily: "var(--font-mono)",
           fontSize: "13px",
-          bgcolor: "var(--color-code-bg)",
+          bgcolor: theme.palette.codeBg,
           px: 0.75,
           py: 0.25,
           borderRadius: "var(--radius-sm)",
           fontWeight: 500,
         },
         "& pre": {
-          bgcolor: "var(--color-code-bg)",
+          bgcolor: theme.palette.codeBg,
           p: 2,
           borderRadius: "var(--radius-md)",
           overflow: "auto",
           my: 1.5,
-          border: "1px solid var(--color-border)",
+          border: `1px solid ${theme.palette.border}`,
         },
         "& pre code": {
           bgcolor: "transparent",
@@ -244,12 +244,12 @@ function AssistantMessage({
           lineHeight: 1.6,
         },
         "& a": {
-          color: "var(--color-accent)",
+          color: theme.palette.accent.main,
           textDecoration: "none",
           borderBottom: "1px solid transparent",
           transition: "border-color 0.15s ease",
           "&:hover": {
-            borderBottomColor: "var(--color-accent)",
+            borderBottomColor: theme.palette.accent.main,
           },
         },
         "& h1, & h2, & h3, & h4": {
@@ -263,15 +263,15 @@ function AssistantMessage({
         "& h2": { fontSize: "17px" },
         "& h3": { fontSize: "15px" },
         "& blockquote": {
-          borderLeft: "3px solid var(--color-accent)",
+          borderLeft: `3px solid ${theme.palette.accent.main}`,
           m: 0,
           my: 1,
           pl: 2,
-          color: "var(--color-text-secondary)",
+          color: theme.palette.text.secondary,
         },
         "& hr": {
           border: "none",
-          borderTop: "1px solid var(--color-border)",
+          borderTop: `1px solid ${theme.palette.border}`,
           my: 2,
         },
         "& table": {
@@ -281,20 +281,20 @@ function AssistantMessage({
           fontSize: "13.5px",
         },
         "& th, & td": {
-          border: "1px solid var(--color-border)",
+          border: `1px solid ${theme.palette.border}`,
           px: 1.5,
           py: 0.75,
           textAlign: "left",
         },
         "& th": {
-          bgcolor: "var(--color-bg-secondary)",
+          bgcolor: theme.palette.bgSecondary,
           fontWeight: 600,
         },
         "& .tool-result": {
           my: 1.5,
-          border: "1px solid var(--color-border)",
+          border: `1px solid ${theme.palette.border}`,
           borderRadius: "var(--radius-md)",
-          bgcolor: "var(--color-bg-secondary)",
+          bgcolor: theme.palette.bgSecondary,
           overflow: "hidden",
         },
         "& .tool-result summary": {
@@ -303,14 +303,14 @@ function AssistantMessage({
           py: 1,
           fontSize: "13px",
           fontWeight: 600,
-          color: "var(--color-text-secondary)",
+          color: theme.palette.text.secondary,
           userSelect: "none",
         },
         "& .tool-result > div": {
           px: 1.5,
           pb: 1.5,
         },
-      }}
+      })}
     >
       {parts.length > 0 ? (
         parts.map((part, index) =>
@@ -342,25 +342,25 @@ function AssistantMessage({
       ) : null}
       {error ? (
         <Box
-          sx={{
+          sx={(theme) => ({
             mt: 1.5,
             px: 1.5,
             py: 1.25,
             borderRadius: "var(--radius-md)",
             border: "1px solid",
             borderColor:
-              error.kind === "limit" ? "rgba(201, 100, 66, 0.28)" : "rgba(180, 87, 87, 0.24)",
+              error.kind === "limit" ? theme.palette.accent.soft : theme.palette.error2.light,
             bgcolor:
-              error.kind === "limit" ? "rgba(201, 100, 66, 0.08)" : "rgba(180, 87, 87, 0.08)",
-          }}
+              error.kind === "limit" ? theme.palette.accent.soft : "rgba(180, 87, 87, 0.08)",
+          })}
         >
           <Typography
-            sx={{
+            sx={(theme) => ({
               fontSize: "13px",
               fontWeight: 600,
-              color: error.kind === "limit" ? "var(--color-accent)" : "#9F3E3E",
+              color: error.kind === "limit" ? theme.palette.accent.main : theme.palette.error2.main,
               mb: 0.25,
-            }}
+            })}
           >
             {error.kind === "limit" ? "Usage limit reached" : "Request failed"}
           </Typography>
@@ -368,7 +368,7 @@ function AssistantMessage({
             sx={{
               fontSize: "13.5px",
               lineHeight: 1.6,
-              color: "var(--color-text-secondary)",
+              color: "text.secondary",
               whiteSpace: "pre-wrap",
             }}
           >

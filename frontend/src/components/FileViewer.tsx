@@ -78,18 +78,18 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
     <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
       {/* Header bar */}
       <Box
-        sx={{
+        sx={(theme) => ({
           display: "flex",
           alignItems: "center",
           gap: 0.5,
           px: { xs: 0.5, sm: 1 },
           py: 0.5,
-          borderBottom: "1px solid var(--color-border)",
-          bgcolor: "var(--color-surface)",
+          borderBottom: `1px solid ${theme.palette.border}`,
+          bgcolor: "background.paper",
           flexShrink: 0,
-        }}
+        })}
       >
-        <IconButton onClick={onClose} size="small" sx={{ color: "var(--color-text-secondary)" }}>
+        <IconButton onClick={onClose} size="small" sx={{ color: "text.secondary" }}>
           <ArrowBackRoundedIcon fontSize="small" />
         </IconButton>
         <Typography
@@ -98,7 +98,7 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
             fontSize: "13px",
             fontWeight: 600,
             fontFamily: "var(--font-mono)",
-            color: "var(--color-text)",
+            color: "text.primary",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -108,7 +108,7 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
         </Typography>
         {data?.content && data.type !== "image" && (
           <Tooltip title={copied ? "コピーしました" : "コピー"}>
-            <IconButton onClick={handleCopy} size="small" sx={{ color: "var(--color-text-secondary)" }}>
+            <IconButton onClick={handleCopy} size="small" sx={{ color: "text.secondary" }}>
               <ContentCopyRoundedIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Tooltip>
@@ -119,16 +119,16 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
       <Box sx={{ flex: 1, overflow: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", position: "relative" }}>
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress size={28} sx={{ color: "var(--color-accent)" }} />
+            <CircularProgress size={28} sx={(theme) => ({ color: theme.palette.accent.main })} />
           </Box>
         ) : !data ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4, color: "var(--color-text-secondary)" }}>
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4, color: "text.secondary" }}>
             <Typography fontSize="13px">
               {fetchError ? "サーバーに接続できません" : "ファイルを読み込めませんでした"}
             </Typography>
           </Box>
         ) : data.type === "binary" ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4, color: "var(--color-text-tertiary)" }}>
+          <Box sx={(theme) => ({ display: "flex", justifyContent: "center", py: 4, color: theme.palette.textTertiary })}>
             <Typography fontSize="13px">{data.message || "バイナリファイルは表示できません"}</Typography>
           </Box>
         ) : data.type === "image" ? (
@@ -142,19 +142,19 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
         ) : data.type === "markdown" ? (
           <Box
             className="markdown-viewer"
-            sx={{
+            sx={(theme) => ({
               px: { xs: 2, sm: 3 },
               py: 2,
               fontSize: "14px",
               lineHeight: 1.7,
-              "& h1": { fontSize: "1.5em", fontWeight: 700, mt: 2, mb: 1, borderBottom: "1px solid var(--color-border)", pb: 0.5 },
+              "& h1": { fontSize: "1.5em", fontWeight: 700, mt: 2, mb: 1, borderBottom: `1px solid ${theme.palette.border}`, pb: 0.5 },
               "& h2": { fontSize: "1.25em", fontWeight: 600, mt: 2, mb: 0.5 },
               "& h3": { fontSize: "1.1em", fontWeight: 600, mt: 1.5, mb: 0.5 },
               "& p": { my: 0.75 },
-              "& a": { color: "var(--color-accent)" },
+              "& a": { color: theme.palette.accent.main },
               "& img": { maxWidth: "100%", borderRadius: 1 },
               "& pre": {
-                bgcolor: "var(--color-code-bg)",
+                bgcolor: theme.palette.codeBg,
                 p: 1.5,
                 borderRadius: "var(--radius-sm)",
                 overflow: "auto",
@@ -163,7 +163,7 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
                 my: 1,
               },
               "& code": {
-                bgcolor: "var(--color-code-bg)",
+                bgcolor: theme.palette.codeBg,
                 px: 0.5,
                 py: 0.125,
                 borderRadius: "4px",
@@ -174,10 +174,10 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
               "& ul, & ol": { pl: 2.5 },
               "& li": { my: 0.25 },
               "& blockquote": {
-                borderLeft: "3px solid var(--color-accent)",
+                borderLeft: `3px solid ${theme.palette.accent.main}`,
                 ml: 0,
                 pl: 2,
-                color: "var(--color-text-secondary)",
+                color: theme.palette.text.secondary,
               },
               "& table": {
                 borderCollapse: "collapse",
@@ -185,13 +185,13 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
                 my: 1,
               },
               "& th, & td": {
-                border: "1px solid var(--color-border)",
+                border: `1px solid ${theme.palette.border}`,
                 px: 1,
                 py: 0.5,
                 fontSize: "13px",
               },
-              "& th": { bgcolor: "var(--color-bg-secondary)", fontWeight: 600 },
-            }}
+              "& th": { bgcolor: theme.palette.bgSecondary, fontWeight: 600 },
+            })}
           >
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -226,7 +226,6 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
                 lineHeight: 1.6,
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
-                color: "var(--color-text)",
               }}
             >
               {data.content}
@@ -239,15 +238,15 @@ export default function FileViewer({ repoId, filePath, onClose, onSwitchToChat }
           <Fab
             size="medium"
             onClick={onSwitchToChat}
-            sx={{
+            sx={(theme) => ({
               position: "sticky",
               bottom: 16,
               float: "right",
               mr: 2,
-              bgcolor: "var(--color-accent)",
-              color: "#fff",
-              "&:hover": { bgcolor: "var(--color-accent-hover)" },
-            }}
+              bgcolor: theme.palette.accent.main,
+              color: theme.palette.onAccent,
+              "&:hover": { bgcolor: theme.palette.accent.hover },
+            })}
           >
             <ChatRoundedIcon />
           </Fab>

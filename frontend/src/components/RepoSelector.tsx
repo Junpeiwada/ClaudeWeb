@@ -45,76 +45,76 @@ export default function RepoSelector({ value, onChange }: Props) {
       {/* Trigger */}
       <Box
         onClick={() => setOpen(!open)}
-        sx={{
+        sx={(theme) => ({
           display: "flex",
           alignItems: "center",
           gap: 0.75,
           px: 1.5,
           py: 0.75,
           borderRadius: "var(--radius-sm)",
-          border: "1px solid var(--color-border)",
+          border: `1px solid ${theme.palette.border}`,
           cursor: "pointer",
           minWidth: { xs: 100, sm: 140 },
           transition: "all 0.15s ease",
-          bgcolor: "var(--color-surface)",
+          bgcolor: "background.paper",
           "&:hover": {
-            borderColor: "var(--color-text-tertiary)",
+            borderColor: theme.palette.textTertiary,
           },
-        }}
+        })}
       >
         <FolderRoundedIcon
-          sx={{ fontSize: 15, color: "var(--color-text-tertiary)" }}
+          sx={(theme) => ({ fontSize: 15, color: theme.palette.textTertiary })}
         />
         <Typography
-          sx={{
+          sx={(theme) => ({
             fontSize: "13px",
             fontWeight: 500,
-            color: selected ? "var(--color-text)" : "var(--color-text-tertiary)",
+            color: selected ? theme.palette.text.primary : theme.palette.textTertiary,
             flex: 1,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-          }}
+          })}
         >
           {selected?.name ?? "Select repo"}
         </Typography>
         <UnfoldMoreRoundedIcon
-          sx={{
+          sx={(theme) => ({
             fontSize: 16,
-            color: "var(--color-text-tertiary)",
+            color: theme.palette.textTertiary,
             transition: "transform 0.2s ease",
             transform: open ? "rotate(180deg)" : "none",
-          }}
+          })}
         />
       </Box>
 
       {/* Dropdown */}
       <Collapse in={open}>
         <Box
-          sx={{
+          sx={(theme) => ({
             position: "absolute",
             top: "calc(100% + 4px)",
             right: 0,
             minWidth: 200,
-            bgcolor: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
+            bgcolor: "background.paper",
+            border: `1px solid ${theme.palette.border}`,
             borderRadius: "var(--radius-md)",
             boxShadow: "var(--shadow-lg)",
             py: 0.5,
             zIndex: 1000,
             maxHeight: 280,
             overflow: "auto",
-          }}
+          })}
         >
           {fetchError ? (
             <Box sx={{ px: 1.5, py: 2, textAlign: "center" }}>
-              <Typography sx={{ fontSize: "13px", color: "var(--color-text-tertiary)" }}>
+              <Typography sx={(theme) => ({ fontSize: "13px", color: theme.palette.textTertiary })}>
                 サーバーに接続できません
               </Typography>
             </Box>
           ) : repos.length === 0 ? (
             <Box sx={{ px: 1.5, py: 2, textAlign: "center" }}>
-              <Typography sx={{ fontSize: "13px", color: "var(--color-text-tertiary)" }}>
+              <Typography sx={(theme) => ({ fontSize: "13px", color: theme.palette.textTertiary })}>
                 リポジトリがありません
               </Typography>
             </Box>
@@ -125,7 +125,7 @@ export default function RepoSelector({ value, onChange }: Props) {
                 onChange(r.id);
                 setOpen(false);
               }}
-              sx={{
+              sx={(theme) => ({
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
@@ -134,18 +134,18 @@ export default function RepoSelector({ value, onChange }: Props) {
                 cursor: "pointer",
                 transition: "background 0.1s ease",
                 "&:hover": {
-                  bgcolor: "var(--color-bg-secondary)",
+                  bgcolor: theme.palette.bgSecondary,
                 },
-              }}
+              })}
             >
               <FolderRoundedIcon
-                sx={{ fontSize: 15, color: "var(--color-text-tertiary)" }}
+                sx={(theme) => ({ fontSize: 15, color: theme.palette.textTertiary })}
               />
               <Typography
                 sx={{
                   fontSize: "13px",
                   fontWeight: r.id === value ? 600 : 400,
-                  color: "var(--color-text)",
+                  color: "text.primary",
                   flex: 1,
                 }}
               >
@@ -153,7 +153,7 @@ export default function RepoSelector({ value, onChange }: Props) {
               </Typography>
               {r.id === value && (
                 <CheckRoundedIcon
-                  sx={{ fontSize: 15, color: "var(--color-accent)" }}
+                  sx={(theme) => ({ fontSize: 15, color: theme.palette.accent.main })}
                 />
               )}
             </Box>

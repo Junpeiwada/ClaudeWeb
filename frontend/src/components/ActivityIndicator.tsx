@@ -30,21 +30,21 @@ export default function ActivityIndicator({ activity, isLoading }: Props) {
         {[0, 1, 2].map((i) => (
           <Box
             key={i}
-            sx={{
+            sx={(theme) => ({
               width: 5,
               height: 5,
               borderRadius: "50%",
-              bgcolor: "var(--color-accent)",
+              bgcolor: theme.palette.accent.main,
               animation: "pulse-dot 1.4s ease-in-out infinite",
               animationDelay: `${i * 0.2}s`,
-            }}
+            })}
           />
         ))}
       </Box>
       <Typography
         sx={{
           fontSize: "12.5px",
-          color: "var(--color-text-secondary)",
+          color: "text.secondary",
           fontStyle: "italic",
           letterSpacing: "-0.01em",
         }}

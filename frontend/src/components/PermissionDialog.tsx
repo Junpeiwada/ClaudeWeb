@@ -29,7 +29,7 @@ export default function PermissionDialog({ permission, onRespond }: Props) {
 
       {/* Dialog */}
       <Box
-        sx={{
+        sx={(theme) => ({
           position: "fixed",
           bottom: { xs: 16, sm: "auto" },
           top: { xs: "auto", sm: "50%" },
@@ -38,40 +38,40 @@ export default function PermissionDialog({ permission, onRespond }: Props) {
           transform: { sm: "translate(-50%, -50%)" },
           width: { sm: 420 },
           maxHeight: "80dvh",
-          bgcolor: "var(--color-surface)",
+          bgcolor: "background.paper",
           borderRadius: "var(--radius-lg)",
           boxShadow: "var(--shadow-lg)",
-          border: "1px solid var(--color-border)",
+          border: `1px solid ${theme.palette.border}`,
           overflow: "hidden",
           zIndex: 1300,
           animation: "fade-in-up 0.25s ease",
-        }}
+        })}
       >
         {/* Header */}
         <Box
-          sx={{
+          sx={(theme) => ({
             display: "flex",
             alignItems: "center",
             gap: 1,
             px: 2.5,
             py: 2,
-            borderBottom: "1px solid var(--color-border)",
-          }}
+            borderBottom: `1px solid ${theme.palette.border}`,
+          })}
         >
           <Box
-            sx={{
+            sx={(theme) => ({
               width: 8,
               height: 8,
               borderRadius: "50%",
-              bgcolor: "var(--color-accent)",
+              bgcolor: theme.palette.accent.main,
               flexShrink: 0,
-            }}
+            })}
           />
           <Typography
             sx={{
               fontSize: "14px",
               fontWeight: 600,
-              color: "var(--color-text)",
+              color: "text.primary",
               flex: 1,
             }}
           >
@@ -90,17 +90,17 @@ export default function PermissionDialog({ permission, onRespond }: Props) {
             }}
           >
             <Box
-              sx={{
+              sx={(theme) => ({
                 fontFamily: "var(--font-mono)",
                 fontSize: "12.5px",
                 lineHeight: 1.7,
-                color: "var(--color-text)",
-                bgcolor: "var(--color-code-bg)",
+                color: "text.primary",
+                bgcolor: theme.palette.codeBg,
                 p: 1.5,
                 borderRadius: "var(--radius-sm)",
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-all",
-              }}
+              })}
             >
               {inputSummary}
             </Box>
@@ -109,52 +109,52 @@ export default function PermissionDialog({ permission, onRespond }: Props) {
 
         {/* Actions */}
         <Box
-          sx={{
+          sx={(theme) => ({
             display: "flex",
             gap: 1,
             px: 2.5,
             py: 2,
-            borderTop: "1px solid var(--color-border)",
-          }}
+            borderTop: `1px solid ${theme.palette.border}`,
+          })}
         >
           <IconButton
             onClick={() => onRespond(permission.requestId, false)}
-            sx={{
+            sx={(theme) => ({
               flex: 1,
               borderRadius: "var(--radius-sm)",
               py: 1,
-              border: "1px solid var(--color-border)",
-              color: "var(--color-text-secondary)",
+              border: `1px solid ${theme.palette.border}`,
+              color: theme.palette.text.secondary,
               fontSize: "13px",
               fontWeight: 500,
               gap: 0.75,
               transition: "all 0.15s ease",
               "&:hover": {
-                bgcolor: "#FEF2F2",
-                borderColor: "#EF4444",
-                color: "#EF4444",
+                bgcolor: theme.palette.error2.bg,
+                borderColor: theme.palette.error2.border,
+                color: theme.palette.error2.border,
               },
-            }}
+            })}
           >
             <CloseRoundedIcon sx={{ fontSize: 16 }} />
             <span>Deny</span>
           </IconButton>
           <IconButton
             onClick={() => onRespond(permission.requestId, true)}
-            sx={{
+            sx={(theme) => ({
               flex: 1,
               borderRadius: "var(--radius-sm)",
               py: 1,
-              bgcolor: "var(--color-accent)",
-              color: "#fff",
+              bgcolor: theme.palette.accent.main,
+              color: theme.palette.onAccent,
               fontSize: "13px",
               fontWeight: 500,
               gap: 0.75,
               transition: "all 0.15s ease",
               "&:hover": {
-                bgcolor: "var(--color-accent-hover)",
+                bgcolor: theme.palette.accent.hover,
               },
-            }}
+            })}
           >
             <CheckRoundedIcon sx={{ fontSize: 16 }} />
             <span>Allow</span>

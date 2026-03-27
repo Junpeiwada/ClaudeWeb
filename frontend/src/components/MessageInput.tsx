@@ -131,15 +131,15 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading }: Pr
           {images.map((img, i) => (
             <Box
               key={i}
-              sx={{
+              sx={(theme) => ({
                 position: "relative",
                 flexShrink: 0,
                 width: 64,
                 height: 64,
                 borderRadius: "var(--radius-sm)",
                 overflow: "hidden",
-                border: "1px solid var(--color-border)",
-              }}
+                border: `1px solid ${theme.palette.border}`,
+              })}
             >
               <img
                 src={img.preview}
@@ -173,35 +173,35 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading }: Pr
 
       {/* Input row */}
       <Box
-        sx={{
+        sx={(theme) => ({
           display: "flex",
           alignItems: "flex-end",
           gap: 0.75,
           p: 1,
           pl: 1.5,
-          bgcolor: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
+          bgcolor: "background.paper",
+          border: `1px solid ${theme.palette.border}`,
           borderRadius: "var(--radius-lg)",
           boxShadow: "var(--shadow-sm)",
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
           "&:focus-within": {
-            borderColor: "var(--color-accent)",
-            boxShadow: "0 0 0 2px var(--color-accent-soft)",
+            borderColor: theme.palette.accent.main,
+            boxShadow: `0 0 0 2px ${theme.palette.accent.soft}`,
           },
-        }}
+        })}
       >
         {/* Image attach button */}
         <IconButton
           size="small"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled && !isLoading}
-          sx={{
+          sx={(theme) => ({
             width: 32,
             height: 32,
-            color: "var(--color-text-tertiary)",
+            color: theme.palette.textTertiary,
             flexShrink: 0,
-            "&:hover": { color: "var(--color-text-secondary)" },
-          }}
+            "&:hover": { color: theme.palette.text.secondary },
+          })}
         >
           <ImageRoundedIcon sx={{ fontSize: 20 }} />
         </IconButton>
@@ -241,34 +241,34 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading }: Pr
             spellCheck: false,
             'data-form-type': 'other',
           }}
-          sx={{
+          sx={(theme) => ({
             fontSize: "14.5px",
             lineHeight: 1.5,
             py: 0.5,
             "& textarea": {
               "&::placeholder": {
-                color: "var(--color-text-tertiary)",
+                color: theme.palette.textTertiary,
                 opacity: 1,
               },
             },
-          }}
+          })}
         />
         {isLoading && !canSend ? (
           <IconButton
             onClick={onStop}
             size="small"
-            sx={{
+            sx={(theme) => ({
               width: 32,
               height: 32,
               borderRadius: "var(--radius-sm)",
-              bgcolor: "var(--color-text-secondary)",
-              color: "#fff",
+              bgcolor: theme.palette.text.secondary,
+              color: theme.palette.onAccent,
               flexShrink: 0,
               transition: "all 0.15s ease",
               "&:hover": {
-                bgcolor: "var(--color-text)",
+                bgcolor: theme.palette.text.primary,
               },
-            }}
+            })}
           >
             <StopRoundedIcon sx={{ fontSize: 18 }} />
           </IconButton>
@@ -277,22 +277,22 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading }: Pr
             onClick={handleSend}
             disabled={!canSend}
             size="small"
-            sx={{
+            sx={(theme) => ({
               width: 32,
               height: 32,
               borderRadius: "var(--radius-sm)",
-              bgcolor: canSend ? "var(--color-accent)" : "var(--color-bg-secondary)",
-              color: canSend ? "#fff" : "var(--color-text-tertiary)",
+              bgcolor: canSend ? theme.palette.accent.main : theme.palette.bgSecondary,
+              color: canSend ? theme.palette.onAccent : theme.palette.textTertiary,
               flexShrink: 0,
               transition: "all 0.15s ease",
               "&:hover": {
-                bgcolor: canSend ? "var(--color-accent-hover)" : "var(--color-bg-secondary)",
+                bgcolor: canSend ? theme.palette.accent.hover : theme.palette.bgSecondary,
               },
               "&.Mui-disabled": {
-                bgcolor: "var(--color-bg-secondary)",
-                color: "var(--color-text-tertiary)",
+                bgcolor: theme.palette.bgSecondary,
+                color: theme.palette.textTertiary,
               },
-            }}
+            })}
           >
             <ArrowUpwardRoundedIcon sx={{ fontSize: 18 }} />
           </IconButton>

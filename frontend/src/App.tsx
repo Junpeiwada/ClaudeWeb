@@ -7,6 +7,62 @@ import FileExplorer from "./components/FileExplorer";
 import Header from "./components/Header";
 import type { Message } from "./hooks/useChat";
 
+// MUIカスタムパレット型拡張
+declare module "@mui/material/styles" {
+  interface Palette {
+    accent: {
+      main: string;
+      soft: string;
+      hover: string;
+      gradient: string;
+    };
+    border: string;
+    userBubble: string;
+    codeBg: string;
+    bgSecondary: string;
+    textTertiary: string;
+    onAccent: string;
+    error2: {
+      main: string;
+      light: string;
+      border: string;
+      bg: string;
+    };
+    fileIcon: {
+      folder: string;
+      image: string;
+      code: string;
+      doc: string;
+    };
+  }
+  interface PaletteOptions {
+    accent?: {
+      main?: string;
+      soft?: string;
+      hover?: string;
+      gradient?: string;
+    };
+    border?: string;
+    userBubble?: string;
+    codeBg?: string;
+    bgSecondary?: string;
+    textTertiary?: string;
+    onAccent?: string;
+    error2?: {
+      main?: string;
+      light?: string;
+      border?: string;
+      bg?: string;
+    };
+    fileIcon?: {
+      folder?: string;
+      image?: string;
+      code?: string;
+      doc?: string;
+    };
+  }
+}
+
 const theme = createTheme({
   palette: {
     primary: { main: "#C96442" },
@@ -17,6 +73,30 @@ const theme = createTheme({
     text: {
       primary: "#2D2B28",
       secondary: "#8C8985",
+    },
+    accent: {
+      main: "#C96442",
+      soft: "rgba(201, 100, 66, 0.08)",
+      hover: "#B5593A",
+      gradient: "linear-gradient(135deg, #C96442 0%, #D4845E 100%)",
+    },
+    border: "#E8E6E3",
+    userBubble: "#EDE9E3",
+    codeBg: "#F0EDE8",
+    bgSecondary: "#F3F1EE",
+    textTertiary: "#B0ADA9",
+    onAccent: "#FFFFFF",
+    error2: {
+      main: "#9F3E3E",
+      light: "rgba(180, 87, 87, 0.24)",
+      border: "#EF4444",
+      bg: "#FEF2F2",
+    },
+    fileIcon: {
+      folder: "#FFA726",
+      image: "#66BB6A",
+      code: "#42A5F5",
+      doc: "#AB47BC",
     },
   },
   typography: {
@@ -119,13 +199,13 @@ export default function App() {
 
       {/* Tab Bar */}
       <Box
-        sx={{
+        sx={(theme) => ({
           display: "flex",
-          borderBottom: "1px solid var(--color-border)",
-          bgcolor: "var(--color-surface)",
+          borderBottom: `1px solid ${theme.palette.border}`,
+          bgcolor: "background.paper",
           flexShrink: 0,
           px: { xs: 1, sm: 2 },
-        }}
+        })}
       >
         {([
           { key: "chat" as const, label: "チャット", icon: <ChatRoundedIcon sx={{ fontSize: 18 }} /> },
@@ -134,7 +214,7 @@ export default function App() {
           <Box
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            sx={{
+            sx={(theme) => ({
               display: "flex",
               alignItems: "center",
               gap: 0.5,
@@ -144,14 +224,14 @@ export default function App() {
               userSelect: "none",
               fontSize: "13px",
               fontWeight: activeTab === tab.key ? 600 : 400,
-              color: activeTab === tab.key ? "var(--color-accent)" : "var(--color-text-secondary)",
+              color: activeTab === tab.key ? theme.palette.accent.main : theme.palette.text.secondary,
               borderBottom: "2px solid",
-              borderColor: activeTab === tab.key ? "var(--color-accent)" : "transparent",
+              borderColor: activeTab === tab.key ? theme.palette.accent.main : "transparent",
               transition: "all 0.15s ease",
               "&:hover": {
-                color: "var(--color-accent)",
+                color: theme.palette.accent.main,
               },
-            }}
+            })}
           >
             {tab.icon}
             {tab.label}

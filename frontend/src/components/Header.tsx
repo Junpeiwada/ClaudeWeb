@@ -17,16 +17,16 @@ interface Props {
 export default function Header({ repoId, onRepoChange, onNewChat, onResumeSession, autoEdit, onAutoEditChange }: Props) {
   return (
     <Box
-      sx={{
+      sx={(theme) => ({
         display: "flex",
         alignItems: "center",
         gap: { xs: 0.75, sm: 1.5 },
         px: { xs: 1.5, sm: 3 },
         py: 1.5,
-        borderBottom: "1px solid var(--color-border)",
-        bgcolor: "var(--color-surface)",
+        borderBottom: `1px solid ${theme.palette.border}`,
+        bgcolor: "background.paper",
         flexShrink: 0,
-      }}
+      })}
     >
       {/* Logo / Title */}
       <Box
@@ -47,24 +47,24 @@ export default function Header({ repoId, onRepoChange, onNewChat, onResumeSessio
         }}
       >
         <Box
-          sx={{
+          sx={(theme) => ({
             width: 28,
             height: 28,
             borderRadius: "var(--radius-sm)",
-            background: "linear-gradient(135deg, #C96442 0%, #D4845E 100%)",
+            background: theme.palette.accent.gradient,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
-          }}
+          })}
         >
           <Typography
-            sx={{
-              color: "#fff",
+            sx={(theme) => ({
+              color: theme.palette.onAccent,
               fontSize: "14px",
               fontWeight: 600,
               lineHeight: 1,
-            }}
+            })}
           >
             C
           </Typography>
@@ -73,7 +73,7 @@ export default function Header({ repoId, onRepoChange, onNewChat, onResumeSessio
           sx={{
             fontSize: "15px",
             fontWeight: 600,
-            color: "var(--color-text)",
+            color: "text.primary",
             letterSpacing: "-0.01em",
             display: { xs: "none", sm: "block" },
           }}
@@ -92,13 +92,13 @@ export default function Header({ repoId, onRepoChange, onNewChat, onResumeSessio
         onPointerDown={() => onAutoEditChange(!autoEdit)}
         role="button"
         aria-label={autoEdit ? "Auto Edit: ON" : "Auto Edit: OFF"}
-        sx={{
+        sx={(theme) => ({
           display: "flex",
           alignItems: "center",
           gap: 0.5,
-          color: autoEdit ? "var(--color-accent)" : "var(--color-text-tertiary)",
+          color: autoEdit ? theme.palette.accent.main : theme.palette.textTertiary,
           border: "1px solid",
-          borderColor: autoEdit ? "var(--color-accent)" : "var(--color-border)",
+          borderColor: autoEdit ? theme.palette.accent.main : theme.palette.border,
           borderRadius: "var(--radius-sm)",
           height: 34,
           px: 1.2,
@@ -106,15 +106,15 @@ export default function Header({ repoId, onRepoChange, onNewChat, onResumeSessio
           transition: "color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease",
           userSelect: "none",
           touchAction: "manipulation",
-          bgcolor: autoEdit ? "var(--color-accent-soft)" : "transparent",
+          bgcolor: autoEdit ? theme.palette.accent.soft : "transparent",
           "@media (hover: hover)": {
             "&:hover": {
-              bgcolor: "var(--color-accent-soft)",
-              borderColor: "var(--color-accent)",
-              color: "var(--color-accent)",
+              bgcolor: theme.palette.accent.soft,
+              borderColor: theme.palette.accent.main,
+              color: theme.palette.accent.main,
             },
           },
-        }}
+        })}
       >
         <EditRoundedIcon sx={{ fontSize: 16 }} />
         <Typography
@@ -137,12 +137,12 @@ export default function Header({ repoId, onRepoChange, onNewChat, onResumeSessio
       {/* New Chat Button */}
       <Box
         onClick={onNewChat}
-        sx={{
+        sx={(theme) => ({
           display: "flex",
           alignItems: "center",
           gap: 0.5,
-          color: "var(--color-text-secondary)",
-          border: "1px solid var(--color-border)",
+          color: theme.palette.text.secondary,
+          border: `1px solid ${theme.palette.border}`,
           borderRadius: "var(--radius-sm)",
           height: 34,
           px: 1.2,
@@ -150,11 +150,11 @@ export default function Header({ repoId, onRepoChange, onNewChat, onResumeSessio
           transition: "all 0.15s ease",
           userSelect: "none",
           "&:hover": {
-            bgcolor: "var(--color-accent-soft)",
-            borderColor: "var(--color-accent)",
-            color: "var(--color-accent)",
+            bgcolor: theme.palette.accent.soft,
+            borderColor: theme.palette.accent.main,
+            color: theme.palette.accent.main,
           },
-        }}
+        })}
       >
         <AddRoundedIcon sx={{ fontSize: 18 }} />
         <Typography
