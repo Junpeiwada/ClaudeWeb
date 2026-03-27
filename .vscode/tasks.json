@@ -2,6 +2,18 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "clean",
+      "type": "shell",
+      "command": "npm run クリーン",
+      "problemMatcher": []
+    },
+    {
+      "label": "clean-and-build",
+      "type": "shell",
+      "command": "npm run クリーン && npm run ビルド:フロントエンド && npm run ビルド:サーバー",
+      "problemMatcher": []
+    },
+    {
       "label": "build-frontend",
       "type": "shell",
       "command": "npm run build",

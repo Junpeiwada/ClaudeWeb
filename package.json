@@ -8,6 +8,7 @@
     "開発:サーバーのみ": "tsx watch server/index.ts",
     "開発:フロントエンドのみ": "cd frontend && npx vite --host",
     "開発:Tauriアプリ": "npx tauri dev",
+    "クリーン": "rm -rf frontend/dist src-tauri/dist-server",
     "ビルド:フロントエンド": "cd frontend && npx vite build",
     "ビルド:サーバー": "node scripts/build-server.mjs",
     "ビルド:Tauriアプリ": "export PATH=\"$HOME/.cargo/bin:$PATH\" && export TAURI_SIGNING_PRIVATE_KEY=$(cat ~/.tauri/AgentNest.key) && export TAURI_SIGNING_PRIVATE_KEY_PASSWORD='' && npx tauri build",

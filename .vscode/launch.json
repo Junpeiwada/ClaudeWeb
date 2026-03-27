@@ -13,7 +13,7 @@
       "name": "Tauri Dev",
       "type": "node",
       "request": "launch",
-      "preLaunchTask": "build-frontend",
+      "preLaunchTask": "clean-and-build",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["tauri", "dev"],
       "cwd": "${workspaceFolder}",

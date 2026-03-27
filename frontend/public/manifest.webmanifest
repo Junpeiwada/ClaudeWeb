@@ -2,7 +2,7 @@
   "name": "AgentNest",
   "short_name": "AgentNest",
   "description": "Claude Code Web Interface",
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#FAF9F7",
   "theme_color": "#C96442",

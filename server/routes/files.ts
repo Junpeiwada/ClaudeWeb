@@ -36,6 +36,14 @@ router.get("/api/repos/:repoId/files", async (req, res) => {
   }
 
   try {
+    const targetStat = await stat(targetDir).catch(() => null);
+    if (!targetStat) {
+      return res.status(404).json({ error: "Directory not found" });
+    }
+    if (!targetStat.isDirectory()) {
+      return res.status(400).json({ error: "Not a directory" });
+    }
+
     const entries = await readdir(targetDir);
     const items = [];
 
