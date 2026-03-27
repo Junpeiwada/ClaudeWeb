@@ -34,7 +34,7 @@ VSCode を使えないユーザーでも、ブラウザのチャット UI から
 
 | レイヤー | 技術 |
 |---------|------|
-| フロントエンド | React + Vite（スマホ対応レスポンシブ） |
+| フロントエンド | React 19 + Vite 8 + MUI 7（スマホ対応レスポンシブ） |
 | バックエンド | Express (Node.js / TypeScript) |
 | AI エンジン | Claude Code SDK (`@anthropic-ai/claude-code`) |
 | リアルタイム通信 | Server-Sent Events (SSE)（ストリーミング表示） |
@@ -207,29 +207,53 @@ const result = await claude({
 
 ```
 AgentNest/
-├── Docs/
-│   └── AgentNest仕様.md        # 本ドキュメント
+├── docs/
+│   └── AgentNest仕様.md           # 本ドキュメント
 ├── server/
-│   ├── index.ts                # Express サーバ起動
+│   ├── index.ts                   # Express サーバ起動
+│   ├── config.ts                  # サーバー設定
 │   ├── routes/
-│   │   ├── chat.ts             # /api/chat（SSE ストリーミング）
-│   │   ├── repos.ts            # /api/repos
-│   │   ├── status.ts           # /api/status（セッション状態）
-│   │   └── permission.ts       # /api/permission（権限承認）
+│   │   ├── chat.ts                # /api/chat（SSE ストリーミング）
+│   │   ├── repos.ts               # /api/repos
+│   │   ├── files.ts               # /api/repos/:repoId/files（ファイル一覧）
+│   │   ├── sessions.ts            # /api/sessions（セッション履歴）
+│   │   ├── status.ts              # /api/status（セッション状態）
+│   │   ├── permission.ts          # /api/permission（権限承認）
+│   │   └── reconnect.ts           # /api/reconnect（再接続）
 │   └── claude/
-│       └── executor.ts         # Claude Code SDK ラッパー
+│       ├── executor.ts            # Claude Code SDK ラッパー
+│       └── commandExpander.ts     # スラッシュコマンド展開
 ├── frontend/
 │   ├── index.html
 │   ├── src/
 │   │   ├── App.tsx
 │   │   ├── components/
-│   │   │   ├── Chat.tsx        # チャット画面
-│   │   │   ├── MessageList.tsx # メッセージ一覧
-│   │   │   ├── MessageInput.tsx# 入力欄
-│   │   │   └── RepoSelector.tsx# リポジトリ選択
+│   │   │   ├── ActivityIndicator.tsx # ツール実行中の表示
+│   │   │   ├── Chat.tsx             # チャット画面
+│   │   │   ├── FileExplorer.tsx     # ファイルエクスプローラー
+│   │   │   ├── FileViewer.tsx       # ファイルビューア
+│   │   │   ├── Header.tsx           # ヘッダー
+│   │   │   ├── MessageInput.tsx     # 入力欄
+│   │   │   ├── MessageList.tsx      # メッセージ一覧
+│   │   │   ├── PermissionDialog.tsx # 権限承認ダイアログ
+│   │   │   ├── RepoSelector.tsx     # リポジトリ選択
+│   │   │   └── SessionHistory.tsx   # セッション履歴
 │   │   └── hooks/
-│   │       └── useChat.ts      # チャットロジック
+│   │       └── useChat.ts           # チャットロジック
 │   └── vite.config.ts
+├── src-tauri/                       # Tauriデスクトップアプリ
+│   ├── Cargo.toml
+│   ├── tauri.conf.json
+│   ├── capabilities/
+│   └── src/
+│       ├── main.rs
+│       ├── lib.rs
+│       ├── server.rs
+│       └── config.rs
+├── src-panel/                       # Tauri設定パネルUI
+│   └── index.html
+├── tests/                           # Playwright E2Eテスト
+├── scripts/                         # リリーススクリプト等
 ├── package.json
 └── tsconfig.json
 ```
@@ -242,23 +266,22 @@ AgentNest/
 
 ```bash
 cd AgentNest
-npm install
-npm run dev        # 開発モード（サーバ + フロントエンド同時起動）
+npm install && cd frontend && npm install
+npm run dev              # サーバ + フロントエンド同時起動
+npm run 開発:Tauriアプリ  # Tauriデスクトップアプリとして起動
 ```
 
-### 本番起動
+### 本番ビルド
 
 ```bash
-npm run build
-npm start
+npm run build            # フロントエンドビルド
+npm run ビルド:Tauriアプリ # Tauriアプリビルド（署名付き）
 ```
 
 ---
 
 ## 今後の拡張候補
 
-- **ファイルプレビュー**: 生成されたファイルの内容をチャット内でプレビュー
 - **画像アップロード**: iPhone から直接画像をアップロード（Google Photos URL 不要に）
 - **通知**: 長時間処理の完了をプッシュ通知
-- **履歴**: 過去のセッション一覧・再開
 - **複数ユーザー対応**: 簡易認証の追加
