@@ -26,6 +26,10 @@ const COMPONENTS_FILES = [
   { name: "Header.tsx", path: "src/components/Header.tsx", type: "file", size: 450, extension: ".tsx" },
 ];
 
+const SPECIAL_FILES = [
+  { name: "foo #1.ts", path: "docs/foo #1.ts", type: "file", size: 321, extension: ".ts" },
+];
+
 const CODE_CONTENT = {
   type: "code",
   content: 'export default function App() {\n  return <div>Hello</div>;\n}',
@@ -60,23 +64,29 @@ async function mockRepos(page: Page) {
   );
 }
 
+/** Known directory paths — anything else with a file extension is treated as "Not a directory" */
+const KNOWN_DIRS: Record<string, object[]> = {
+  "": ROOT_FILES,
+  "src": SRC_FILES,
+  "src/components": COMPONENTS_FILES,
+  "docs": SPECIAL_FILES,
+};
+
 /** Mock file listing API — dispatches by ?dir= parameter */
 async function mockFileList(page: Page) {
-  await page.route("/api/repos/TestRepo/files*", (route) => {
+  await page.route("**/api/repos/TestRepo/files**", (route) => {
     const url = new URL(route.request().url());
     const dir = url.searchParams.get("dir") || "";
 
-    if (dir === "src/components") {
-      return route.fulfill({ json: COMPONENTS_FILES });
+    if (dir in KNOWN_DIRS) {
+      return route.fulfill({ json: KNOWN_DIRS[dir] });
     }
-    if (dir === "src") {
-      return route.fulfill({ json: SRC_FILES });
-    }
-    if (dir === "docs") {
-      return route.fulfill({ json: [] }); // empty directory
-    }
-    // root
-    return route.fulfill({ json: ROOT_FILES });
+    // File path → 400 "Not a directory" (same as real server)
+    return route.fulfill({
+      status: 400,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Not a directory" }),
+    });
   });
 }
 
@@ -245,24 +255,71 @@ test.describe("File explorer", () => {
     await setupAll(page);
     await page.goto("/");
 
-    // Switch to files tab without selecting a repo
-    await switchToFilesTab(page);
-
-    // The text appears in both chat input (hidden) and file explorer (visible).
-    // Target the visible one using :visible pseudo-selector.
+    // リポジトリ未選択時はRepoRedirect画面が表示される
     await expect(
-      page.locator("text=リポジトリを選択してください").locator("visible=true")
+      page.getByText("リポジトリを選択してください")
     ).toBeVisible();
   });
 
   test("shows empty message for empty directory", async ({ page }) => {
-    await setupAll(page);
+    await mockRepos(page);
+    await mockFileContent(page);
+    await page.route("**/api/repos/TestRepo/files**", (route) => {
+      const url = new URL(route.request().url());
+      const dir = url.searchParams.get("dir") || "";
+
+      if (dir === "docs") {
+        return route.fulfill({ json: [] });
+      }
+      if (dir === "src/components") {
+        return route.fulfill({ json: COMPONENTS_FILES });
+      }
+      if (dir === "src") {
+        return route.fulfill({ json: SRC_FILES });
+      }
+      return route.fulfill({ json: ROOT_FILES });
+    });
     await page.goto("/");
     await selectRepo(page);
     await switchToFilesTab(page);
 
     await page.getByText("docs").click();
     await expect(page.getByText("空のディレクトリです")).toBeVisible();
+  });
+
+  test("encodes special characters in file URLs", async ({ page }) => {
+    await setupAll(page);
+    await page.goto("/");
+    await selectRepo(page);
+    await switchToFilesTab(page);
+
+    await page.getByText("docs").click();
+    await page.getByText("foo #1.ts").click();
+
+    await expect(page).toHaveURL(/\/TestRepo\/files\/docs\/foo%20%231\.ts$/);
+  });
+
+  test("shows error for missing file path instead of file viewer", async ({ page }) => {
+    await mockRepos(page);
+    await mockFileContent(page);
+    await page.route("**/api/repos/TestRepo/files**", (route) => {
+      const url = new URL(route.request().url());
+      const dir = url.searchParams.get("dir") || "";
+
+      if (dir === "missing/path") {
+        return route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Directory not found" }),
+        });
+      }
+      return route.fulfill({ json: ROOT_FILES });
+    });
+
+    await page.goto("/TestRepo/files/missing/path");
+
+    await expect(page.getByText("サーバーに接続できません")).toBeVisible();
+    await expect(page.locator("[data-testid='ArrowBackRoundedIcon']")).not.toBeVisible();
   });
 });
 

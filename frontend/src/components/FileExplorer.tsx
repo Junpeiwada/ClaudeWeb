@@ -29,6 +29,8 @@ interface FileEntry {
 
 interface Props {
   repoId: string;
+  currentPath: string;
+  onNavigate: (path: string) => void;
   onSwitchToChat: () => void;
 }
 
@@ -51,49 +53,66 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function FileExplorer({ repoId, onSwitchToChat }: Props) {
+type ViewMode = "directory" | "file" | "loading" | "error";
+
+export default function FileExplorer({ repoId, currentPath, onNavigate, onSwitchToChat }: Props) {
   const theme = useTheme();
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const [currentDir, setCurrentDir] = useState("");
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("loading");
   const [fetchError, setFetchError] = useState(false);
 
-  const fetchDir = useCallback(async (dir: string) => {
+  // currentPathがディレクトリかファイルかを判定しつつデータを取得
+  const fetchPath = useCallback(async (pathStr: string) => {
     if (!repoId) return;
     setLoading(true);
     setFetchError(false);
+
     try {
-      const params = dir ? `?dir=${encodeURIComponent(dir)}` : "";
+      // まずディレクトリとして取得を試みる
+      // パス全体をencodeURIComponentするとスラッシュが%2Fになるため、セグメント単位でエンコード
+      const encodedDir = pathStr
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+      const params = pathStr ? `?dir=${encodedDir}` : "";
       const res = await fetch(`/api/repos/${encodeURIComponent(repoId)}/files${params}`);
-      if (!res.ok) throw new Error();
-      const data: FileEntry[] = await res.json();
-      setEntries(data);
-      setCurrentDir(dir);
+
+      if (res.ok) {
+        const data: FileEntry[] = await res.json();
+        setEntries(data);
+        setViewMode("directory");
+      } else {
+        const errorBody = await res.json().catch(() => null);
+        if (res.status === 400 && errorBody?.error === "Not a directory") {
+          // ディレクトリでなければファイルとみなす
+          setViewMode("file");
+        } else {
+          setEntries([]);
+          setFetchError(true);
+          setViewMode("error");
+        }
+      }
     } catch {
       setEntries([]);
       setFetchError(true);
+      setViewMode("error");
     } finally {
       setLoading(false);
     }
   }, [repoId]);
 
   useEffect(() => {
-    setCurrentDir("");
-    setSelectedFile(null);
-    if (repoId) fetchDir("");
-  }, [repoId, fetchDir]);
+    setViewMode("loading");
+    if (repoId) fetchPath(currentPath);
+  }, [repoId, currentPath, fetchPath]);
 
   const handleEntryClick = (entry: FileEntry) => {
-    if (entry.type === "directory") {
-      fetchDir(entry.path);
-    } else {
-      setSelectedFile(entry.path);
-    }
+    onNavigate(entry.path);
   };
 
   // パンくずリスト用のパス分解
-  const pathParts = currentDir ? currentDir.split("/") : [];
+  const pathParts = currentPath ? currentPath.split("/") : [];
 
   if (!repoId) {
     return (
@@ -103,13 +122,19 @@ export default function FileExplorer({ repoId, onSwitchToChat }: Props) {
     );
   }
 
-  // ファイルビューワーが開いている場合
-  if (selectedFile) {
+  // ファイルビューワー
+  if (viewMode === "file") {
     return (
       <FileViewer
         repoId={repoId}
-        filePath={selectedFile}
-        onClose={() => setSelectedFile(null)}
+        filePath={currentPath}
+        onClose={() => {
+          // 親ディレクトリに戻る
+          const parentDir = currentPath.includes("/")
+            ? currentPath.split("/").slice(0, -1).join("/")
+            : "";
+          onNavigate(parentDir);
+        }}
         onSwitchToChat={onSwitchToChat}
       />
     );
@@ -138,7 +163,7 @@ export default function FileExplorer({ repoId, onSwitchToChat }: Props) {
           <Link
             component="button"
             underline="hover"
-            onClick={() => fetchDir("")}
+            onClick={() => onNavigate("")}
             sx={{ fontSize: "13px", color: pathParts.length === 0 ? "text.primary" : "text.secondary", fontWeight: pathParts.length === 0 ? 600 : 400 }}
           >
             {repoId}
@@ -151,7 +176,7 @@ export default function FileExplorer({ repoId, onSwitchToChat }: Props) {
                 key={partPath}
                 component="button"
                 underline="hover"
-                onClick={() => fetchDir(partPath)}
+                onClick={() => onNavigate(partPath)}
                 sx={{ fontSize: "13px", color: isLast ? "text.primary" : "text.secondary", fontWeight: isLast ? 600 : 400 }}
               >
                 {part}

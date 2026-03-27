@@ -28,6 +28,7 @@ test.describe("iOS入力フィールドのテスト", () => {
   });
 
   test("入力フィールドにiOS予測変換を無効化する属性が設定されている", async ({ page }) => {
+    await selectRepo(page);
     // InputBaseコンポーネント内のテキストエリアを取得（MUIのInputBaseはtextareaを内包）
     const textarea = page.locator('textarea').first();
 
@@ -40,6 +41,7 @@ test.describe("iOS入力フィールドのテスト", () => {
   });
 
   test("入力フィールドのフォーカス・ブラー処理が正しく動作する", async ({ page }) => {
+    await selectRepo(page);
     const textarea = page.locator('textarea').first();
 
     // フォーカス前のCSS変数確認
@@ -70,6 +72,7 @@ test.describe("iOS入力フィールドのテスト", () => {
   });
 
   test("セーフエリア調整用のCSS変数が正しく設定されている", async ({ page }) => {
+    await selectRepo(page);
     // CSS変数の初期値確認
     const rootStyles = await page.evaluate(() => {
       const root = document.documentElement;
@@ -116,6 +119,7 @@ test.describe("iOS入力フィールドのテスト", () => {
   test("モバイルビューポートでの表示確認", async ({ page }) => {
     // iPhoneサイズにビューポート変更
     await page.setViewportSize({ width: 375, height: 812 });
+    await selectRepo(page);
 
     // 入力フィールドが表示されていることを確認
     const textarea = page.locator('textarea').first();

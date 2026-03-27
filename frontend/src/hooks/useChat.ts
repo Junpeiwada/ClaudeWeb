@@ -100,7 +100,8 @@ function setAssistantError(message: Message, error: AssistantError): Message {
 
 export function useChat(
   initialMessages?: Message[],
-  initialSessionId?: string | null
+  initialSessionId?: string | null,
+  conversationKey?: string
 ) {
   const [messages, setMessages] = useState<Message[]>(initialMessages ?? []);
   const [isLoading, setIsLoading] = useState(false);
@@ -111,10 +112,26 @@ export function useChat(
   const [isReconnecting, setIsReconnecting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string | null>(initialSessionId ?? null);
+  const forceFreshSessionRef = useRef(false);
 
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
+
+  useEffect(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    setMessages(initialMessages ?? []);
+    setIsLoading(false);
+    setActivity(null);
+    setSessionId(initialSessionId ?? null);
+    sessionIdRef.current = initialSessionId ?? null;
+    forceFreshSessionRef.current = initialSessionId == null;
+    setPendingPermission(null);
+    setIsReconnecting(false);
+  }, [conversationKey, initialMessages, initialSessionId]);
 
   /** Parse SSE lines from a ReadableStream, calling handler for each event.
    *  onRawData is called on every reader.read() return (including keepalive). */
@@ -269,7 +286,13 @@ export function useChat(
   );
 
   const sendMessage = useCallback(
-    async (message: string, repoId: string, autoEdit: boolean = true, images?: ImageAttachment[]) => {
+    async (
+      message: string,
+      repoId: string,
+      autoEdit: boolean = true,
+      images?: ImageAttachment[],
+      sessionIdOverride?: string | null,
+    ) => {
       // Abort any existing connection (follow-up during loading)
       if (abortRef.current) {
         abortRef.current.abort();
@@ -292,6 +315,12 @@ export function useChat(
       const apiImages = images?.length
         ? images.map(({ data, mediaType }) => ({ data, mediaType }))
         : undefined;
+      const requestSessionId = sessionIdOverride !== undefined
+        ? sessionIdOverride
+        : forceFreshSessionRef.current
+          ? null
+          : sessionIdRef.current;
+      forceFreshSessionRef.current = false;
 
       let receivedDone = false;
       let receivedError = false;
@@ -336,7 +365,7 @@ export function useChat(
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, repoId, sessionId: sessionIdRef.current, autoEdit, images: apiImages }),
+          body: JSON.stringify({ message, repoId, sessionId: requestSessionId, autoEdit, images: apiImages }),
           signal: controller.signal,
         });
 
@@ -432,6 +461,10 @@ export function useChat(
   const resetSession = useCallback(() => {
     setMessages([]);
     setSessionId(null);
+    sessionIdRef.current = null;
+    forceFreshSessionRef.current = true;
+    setIsLoading(false);
+    setActivity(null);
     setPendingPermission(null);
     setIsReconnecting(false);
     if (abortRef.current) {

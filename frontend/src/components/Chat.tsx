@@ -13,9 +13,13 @@ interface Props {
   onSessionIdChange?: (sessionId: string | null) => void;
   initialMessages?: Message[];
   initialSessionId?: string | null;
+  resetNonce?: number;
 }
 
-export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessages, initialSessionId }: Props) {
+export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessages, initialSessionId, resetNonce }: Props) {
+  const conversationKey = initialSessionId != null
+    ? `session:${initialSessionId}`
+    : `new:${resetNonce ?? 0}`;
   const {
     messages,
     isLoading,
@@ -25,7 +29,7 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
     sendMessage,
     respondPermission,
     stopGeneration,
-  } = useChat(initialMessages, initialSessionId);
+  } = useChat(initialMessages, initialSessionId, conversationKey);
 
   // sessionId変更時に親に通知
   const prevSessionIdRef = useRef(sessionId);

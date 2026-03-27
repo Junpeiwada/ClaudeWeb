@@ -8,8 +8,6 @@ const TEST_REPOS = [
   { id: "TestRepo", name: "TestRepo", path: "/tmp/TestRepo" },
 ];
 
-const SESSION_ID = "550e8400-e29b-41d4-a716-446655440000";
-
 const TEST_SESSIONS = [
   {
     sessionId: "aaa-111",
@@ -137,6 +135,52 @@ test.describe("Session history", () => {
     await input.press("Enter");
 
     await expect(page.getByText("了解しました。")).toBeVisible({
+      timeout: 5000,
+    });
+  });
+
+  test("New resets resumed session and starts a fresh chat route", async ({
+    page,
+  }) => {
+    await setupMocks(page);
+    let postedSessionId: string | null | undefined = "unseen";
+
+    await page.route("/api/chat", (route) => {
+      const payload = route.request().postDataJSON() as { sessionId?: string | null };
+      postedSessionId = payload.sessionId;
+      const body = sseBody([
+        { type: "session_id", sessionId: "new-session-123" },
+        { type: "text", content: "新規会話として開始しました。" },
+        { type: "done", sessionId: "new-session-123" },
+      ]);
+      return route.fulfill({
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+        body,
+      });
+    });
+
+    await page.goto("/");
+    await selectRepo(page);
+    await page.getByText("History").click();
+    await page.getByText("Fix authentication bug").click();
+
+    await expect(page.getByText("認証のバグを修正して")).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page).toHaveURL(/\/TestRepo\/chat\/aaa-111$/);
+
+    await page.getByText("New").click();
+
+    await expect(page).toHaveURL(/\/TestRepo\/chat$/);
+
+    const input = page.getByPlaceholder("Message AgentNest...");
+    await input.fill("新しい相談です");
+    await input.press("Enter");
+
+    await expect.poll(() => postedSessionId).toBe(null);
+    await expect(page.getByText("新しい相談です")).toBeVisible();
+    await expect(page.getByText("新規会話として開始しました。")).toBeVisible({
       timeout: 5000,
     });
   });
