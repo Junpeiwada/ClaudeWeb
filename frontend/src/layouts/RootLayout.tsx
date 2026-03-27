@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Outlet, useNavigate, useLocation, useParams, useOutletContext } from "react-router-dom";
 import { Box } from "@mui/material";
 import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
@@ -51,12 +51,22 @@ export default function RootLayout() {
     return () => { cancelled = true; };
   }, [resumeSessionId, repoId]);
 
-  // chatKey: URLからではなく、明示的アクションのstateから算出
-  const initialMessages = resumeSessionId ? (fetchedSession?.messages ?? []) : [];
-  const initialSessionId = resumeSessionId ? (fetchedSession?.sessionId ?? null) : null;
+  // useMemoで参照を安定させる（毎レンダーで新しい[]を生成するとuseChat内のeffectが誤発火してSSE接続が切断される）
+  // fetchedSessionが現在のresumeSessionIdと一致する場合のみメッセージを返す（staleデータ防止）
+  const initialMessages = useMemo(
+    () => {
+      if (!resumeSessionId) return [];
+      if (fetchedSession?.sessionId === resumeSessionId) return fetchedSession.messages;
+      return [];
+    },
+    [resumeSessionId, fetchedSession]
+  );
+  const initialSessionId = resumeSessionId ?? null;
   const chatReady = !resumeSessionId || fetchedSession?.sessionId === resumeSessionId;
+  // chatKey: resumeSessionId自体を使い、fetchの完了/未完了でキーが変わらないようにする
+  // （"loading" → 実IDへの変化でChatが再マウントされSSE接続が切断されるのを防ぐ）
   const chatKey = resumeSessionId
-    ? `session:${fetchedSession?.sessionId ?? "loading"}`
+    ? `session:${resumeSessionId}`
     : `new:${repoId}:${newChatNonce}`;
 
   // --- Tabs ---
