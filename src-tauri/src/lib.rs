@@ -1,10 +1,16 @@
 mod config;
 mod server;
-mod tray;
 
 use config::AppConfig;
 use server::{ServerStatus, SharedServerState};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
+
+async fn emit_status(app: &AppHandle, state: &SharedServerState) {
+    let s = state.lock().await;
+    let status = s.status();
+    drop(s);
+    let _ = app.emit("server-status-change", &status);
+}
 
 #[tauri::command]
 fn get_config(app: AppHandle) -> AppConfig {
@@ -38,16 +44,14 @@ async fn start_server(app: AppHandle, state: State<'_, SharedServerState>) -> Re
     let port = cfg.port;
 
     server::start_server(&app, &state, &base_dir, port).await?;
-
-    // 状態変更を通知
-    tray::emit_status(&app, &state).await;
+    emit_status(&app, &state).await;
     Ok(())
 }
 
 #[tauri::command]
 async fn stop_server(app: AppHandle, state: State<'_, SharedServerState>) -> Result<(), String> {
     server::stop_server(&state).await?;
-    tray::emit_status(&app, &state).await;
+    emit_status(&app, &state).await;
     Ok(())
 }
 
@@ -85,10 +89,7 @@ pub fn run() {
                 }
             }
 
-            // トレイ作成
-            tray::create_tray(app.handle())?;
-
-            // macOS: ウィンドウ閉じてもアプリ終了しない
+            // macOS: Dockアイコンで操作
             #[cfg(target_os = "macos")]
             {
                 app.set_activation_policy(tauri::ActivationPolicy::Regular);
@@ -103,11 +104,11 @@ pub fn run() {
                     let base_dir = cfg.base_project_dir.unwrap();
                     match server::start_server(&app_handle, &state, &base_dir, cfg.port).await {
                         Ok(()) => {
-                            tray::emit_status(&app_handle, &state).await;
+                            emit_status(&app_handle, &state).await;
                         }
                         Err(e) => {
                             eprintln!("自動起動失敗: {}", e);
-                            tray::emit_status(&app_handle, &state).await;
+                            emit_status(&app_handle, &state).await;
                         }
                     }
                 }
@@ -144,7 +145,7 @@ pub fn run() {
             match &event {
                 tauri::RunEvent::ExitRequested { ref api, code, .. } => {
                     if code.is_none() {
-                        // ウィンドウが全て閉じた時のみ終了を防ぐ（トレイで常駐）
+                        // ウィンドウが全て閉じた時のみ終了を防ぐ（バックグラウンドでサーバー常駐）
                         // code が Some の場合は app.exit() からの明示的終了なので通す
                         api.prevent_exit();
                     }

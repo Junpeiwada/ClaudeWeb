@@ -21,10 +21,6 @@
         "dragDropEnabled": true
       }
     ],
-    "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true
-    },
     "withGlobalTauri": true,
     "security": {
       "csp": "default-src 'self' 'unsafe-inline' tauri:; connect-src 'self' http://localhost:* tauri:; img-src 'self' data: blob:; font-src 'self' data:;"
