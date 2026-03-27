@@ -30,11 +30,11 @@ async function selectRepo(page: Page) {
   await page.getByText("TestRepo").nth(0).click();
 }
 
-/** Type a message and send it */
+/** Type a message and send it (desktop: Meta+Enter) */
 async function sendMessage(page: Page, message: string) {
   const input = page.getByPlaceholder("Message AgentNest...");
   await input.fill(message);
-  await input.press("Enter");
+  await input.press("Meta+Enter");
 }
 
 // ---------------------------------------------------------------------------
@@ -484,5 +484,65 @@ test.describe("Reconnection", () => {
       page.getByText("Recovered after reconnect retry")
     ).toBeVisible({ timeout: 10000 });
     expect(reconnectCalls).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: Permission Dialog + Auto Edit toggle
+// ---------------------------------------------------------------------------
+
+test.describe("Permission dialog with Auto toggle", () => {
+  test("chat is not unmounted when Auto toggle is clicked while permission dialog is shown", async ({
+    page,
+  }) => {
+    await mockRepos(page);
+
+    // /api/chat: permissionイベントを送信後、doneで完了させる
+    // （pendingPermissionはdoneでクリアされないので権限ダイアログは残る）
+    await page.route("/api/chat", (route) => {
+      return route.fulfill({
+        status: 200,
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+        },
+        body: sseBody([
+          { type: "session_id", sessionId: SESSION_ID },
+          { type: "text", content: "Before permission" },
+          {
+            type: "permission",
+            toolName: "Write",
+            toolInput: { file_path: "/tmp/test.txt", content: "hello" },
+            requestId: "perm-auto-1",
+          },
+          { type: "done", sessionId: SESSION_ID },
+        ]),
+      });
+    });
+
+    await page.goto("/");
+    await selectRepo(page);
+    await sendMessage(page, "Write a file");
+
+    // 権限ダイアログが表示されるのを待つ（Denyボタンはダイアログ固有）
+    await expect(page.getByText("Deny")).toBeVisible({ timeout: 5000 });
+
+    // ユーザーメッセージが表示されていることを確認
+    await expect(page.getByText("Write a file")).toBeVisible();
+
+    // Autoトグルをクリック（権限ダイアログのバックドロップが覆っているためforce指定）
+    // 実際のAutoトグルはonPointerDownイベントを使用しているため、pointerdownもディスパッチ
+    const autoToggle = page.getByRole("button", { name: /Auto Edit/i });
+    await autoToggle.dispatchEvent("pointerdown");
+
+    // チャットがアンマウントされていないことを確認:
+    // 1. ユーザーメッセージがまだ表示されている
+    await expect(page.getByText("Write a file")).toBeVisible();
+
+    // 2. 権限ダイアログがまだ表示されている
+    await expect(page.getByText("Deny")).toBeVisible();
+
+    // 3. アシスタントのテキストもまだ表示されている
+    await expect(page.getByText("Before permission")).toBeVisible();
   });
 });
