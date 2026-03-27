@@ -54,12 +54,8 @@ git add package.json package-lock.json
 git commit -m "リリース: v${VERSION}"
 git tag "v${VERSION}"
 
-# 3. フロントエンドビルド
-echo "=== フロントエンドビルド ==="
-npm run build
-
-# 4. Tauriビルド（署名付き）
-echo "=== Tauriビルド ==="
+# 3. フロントエンド・サーバービルド → Tauriビルド（beforeBuildCommandで自動実行）
+echo "=== Tauriビルド（フロントエンド・サーバー含む）==="
 npx tauri build
 
 # 5. git push（タグをリリース前にpush）

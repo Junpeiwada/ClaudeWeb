@@ -4,7 +4,9 @@
   "version": "../package.json",
   "identifier": "com.junpeiwada.agentnest",
   "build": {
-    "frontendDist": "../src-panel"
+    "frontendDist": "../src-panel",
+    "beforeDevCommand": "npm run ビルド:フロントエンド && npm run ビルド:サーバー",
+    "beforeBuildCommand": "npm run ビルド:フロントエンド && npm run ビルド:サーバー"
   },
   "app": {
     "windows": [
