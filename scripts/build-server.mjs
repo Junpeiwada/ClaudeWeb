@@ -48,6 +48,7 @@ const destModules = resolve(outDir, "node_modules");
 const packagesToCopy = [
   "@anthropic-ai/claude-code",
   "@img/sharp-darwin-arm64",  // macOS ARM64向けsharp
+  "@img/sharp-darwin-x64",    // macOS x64向けsharp
 ];
 
 for (const pkg of packagesToCopy) {
