@@ -605,6 +605,10 @@
       // ダウンロード済みなら再起動
       if (updateReady) {
         try {
+          // relaunch前にサーバーを停止（std::process::exit()でRunEvent::Exitが呼ばれないため）
+          if (isRunning) {
+            await invoke("stop_server");
+          }
           const { relaunch } = window.__TAURI__.process;
           await relaunch();
         } catch (e) {
