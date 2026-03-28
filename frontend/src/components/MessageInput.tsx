@@ -243,11 +243,7 @@ export default function MessageInput({ onSend, onStop, disabled, isLoading, visi
             }
             if (e.nativeEvent.isComposing) return;
             if (isMobile) {
-              // iOS/Android: Enterで送信
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
+              // iOS/Android: Enterは改行（送信はボタンのみ）
             } else {
               // Mac/PC: Command+Enter (Mac) または Ctrl+Enter (Windows) で送信
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
