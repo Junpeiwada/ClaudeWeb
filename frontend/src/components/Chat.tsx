@@ -5,6 +5,7 @@ import MessageInput from "./MessageInput";
 import ActivityIndicator from "./ActivityIndicator";
 import PermissionDialog from "./PermissionDialog";
 import { useChat } from "../hooks/useChat";
+import { useWakeLock } from "../hooks/useWakeLock";
 import type { Message } from "../hooks/useChat";
 
 interface Props {
@@ -31,6 +32,9 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
     respondPermission,
     stopGeneration,
   } = useChat(initialMessages, initialSessionId, conversationKey);
+
+  // AI応答待ち中はiPhoneのスリープを防止
+  useWakeLock(isLoading);
 
   // sessionId変更時に親に通知
   const prevSessionIdRef = useRef(sessionId);

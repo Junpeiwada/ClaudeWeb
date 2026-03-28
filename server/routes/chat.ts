@@ -34,6 +34,7 @@ export function createChatRouter(
     res.flushHeaders();
 
     let connectionOpen = true;
+    const sseStartTime = Date.now();
 
     const send = (data: object, flush = false) => {
       if (!connectionOpen) return;
@@ -111,7 +112,7 @@ export function createChatRouter(
 
     // Handle client disconnect — session continues for reconnection
     req.on("close", () => {
-      serverLog("SSE_CLIENT_DISCONNECT", { repoId });
+      serverLog("SSE_CLIENT_DISCONNECT", { repoId, sessionId: sessionId ?? null, elapsedSec: Math.round((Date.now() - sseStartTime) / 1000) });
       connectionOpen = false;
       clearInterval(keepalive);
     });

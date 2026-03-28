@@ -1,14 +1,15 @@
 import { Router } from "express";
-import { subscribeToSession, log as serverLog } from "../claude/executor.js";
+import { subscribeToSession, getSession, log as serverLog } from "../claude/executor.js";
 
 const router = Router();
 
 router.get("/api/reconnect", (req, res) => {
-  serverLog("RECONNECT_ATTEMPT", { timestamp: new Date().toISOString() });
+  const currentSessionExists = !!getSession();
+  serverLog("RECONNECT_ATTEMPT", { timestamp: new Date().toISOString(), currentSessionExists });
 
   const sub = subscribeToSession();
   if (!sub) {
-    serverLog("RECONNECT_NO_SESSION", "No active session found");
+    serverLog("RECONNECT_NO_SESSION", { currentSessionExists, message: "No active session found" });
     res.status(404).json({ error: "No active session" });
     return;
   }

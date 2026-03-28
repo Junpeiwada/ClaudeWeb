@@ -144,6 +144,12 @@ export function getSession(): Session | null {
 
 export function abortCurrentSession(): void {
   if (currentSession) {
+    log("SESSION_ABORT_CALLED", {
+      sessionId: currentSession.sessionId,
+      repoId: currentSession.repoId,
+      completed: currentSession.completed,
+      partsCount: currentSession.assistantMessage.parts.length,
+    });
     currentSession.abortController.abort();
     currentSession = null;
     currentStream = null;
@@ -229,6 +235,7 @@ export async function executeChat(
   currentSession = session;
   const stderrBuffer: string[] = [];
 
+  log("SESSION_CREATE", { repoId, repoPath, resumeSessionId, sessionRef: "active" });
   log("REQUEST", { message: message.slice(0, 200), repoId, repoPath, resumeSessionId });
 
   // Wrap callbacks to also accumulate state and notify reconnect listeners
@@ -292,9 +299,11 @@ export async function executeChat(
 
   try {
     await runQuery(message, repoPath, abortController, resumeSessionId, autoEdit, session, wrappedCallbacks, stderrBuffer, images);
+    log("SESSION_COMPLETE", { sessionId: session.sessionId, repoId, partsCount: session.assistantMessage.parts.length });
     wrappedCallbacks.onDone(session.sessionId);
   } catch (err: any) {
     if (err.name === "AbortError" || abortController.signal.aborted) {
+      log("SESSION_ABORTED", { sessionId: session.sessionId, repoId });
       wrappedCallbacks.onDone(session.sessionId);
       return;
     }
@@ -306,20 +315,22 @@ export async function executeChat(
       try {
         stderrBuffer.length = 0;
         await runQuery(message, repoPath, abortController, null, autoEdit, session, wrappedCallbacks, stderrBuffer, images);
+        log("SESSION_COMPLETE", { sessionId: session.sessionId, repoId, partsCount: session.assistantMessage.parts.length, retried: true });
         wrappedCallbacks.onDone(session.sessionId);
         return;
       } catch (retryErr: any) {
         if (retryErr.name === "AbortError" || abortController.signal.aborted) {
+          log("SESSION_ABORTED", { sessionId: session.sessionId, repoId, retried: true });
           wrappedCallbacks.onDone(session.sessionId);
           return;
         }
-        log("ERROR", { name: retryErr.name, message: retryErr.message, stack: retryErr.stack });
+        log("SESSION_ERROR", { name: retryErr.name, message: retryErr.message, stack: retryErr.stack, retried: true });
         wrappedCallbacks.onError(normalizeChatError(retryErr, stderrBuffer));
         return;
       }
     }
 
-    log("ERROR", { name: err.name, message: err.message, stack: err.stack });
+    log("SESSION_ERROR", { name: err.name, message: err.message, stack: err.stack });
     wrappedCallbacks.onError(normalizeChatError(err, stderrBuffer));
   }
 }

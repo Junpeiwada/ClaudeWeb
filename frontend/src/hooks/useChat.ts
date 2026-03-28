@@ -329,11 +329,24 @@ export function useChat(
 
       // Keepaliveタイムアウト監視: サーバーから45秒以上データが来なければ接続断と判断
       const keepaliveMonitor = setInterval(() => {
-        if (Date.now() - lastDataTime > KEEPALIVE_TIMEOUT_MS) {
+        const elapsed = Date.now() - lastDataTime;
+        if (elapsed > KEEPALIVE_TIMEOUT_MS) {
+          console.log(`[KEEPALIVE] タイムアウト検知: ${Math.round(elapsed / 1000)}秒データなし`);
           keepaliveTimedOut = true;
           controller.abort();
         }
       }, 5_000);
+
+      // iOS Safari: ページが非表示→復帰したときのログ
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === "visible") {
+          const elapsed = Date.now() - lastDataTime;
+          console.log(`[VISIBILITY] ページ復帰: 最終データから${Math.round(elapsed / 1000)}秒経過, receivedDone=${receivedDone}, receivedError=${receivedError}`);
+        } else {
+          console.log("[VISIBILITY] ページ非表示化");
+        }
+      };
+      document.addEventListener("visibilitychange", handleVisibilityChange);
 
       const doReconnect = async () => {
         console.log("[RECONNECT] 再接続開始");
@@ -415,6 +428,7 @@ export function useChat(
         }
       } finally {
         clearInterval(keepaliveMonitor);
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
         // Only cleanup if this is still the active controller
         // (a newer sendMessage call may have replaced it)
         if (abortRef.current === controller || abortRef.current === null) {
