@@ -3,6 +3,7 @@ mod server;
 
 use config::AppConfig;
 use server::{ServerStatus, SharedServerState};
+use tauri::menu::{AboutMetadata, MenuBuilder, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 async fn emit_status(app: &AppHandle, state: &SharedServerState) {
@@ -79,6 +80,50 @@ pub fn run() {
             get_app_version,
         ])
         .setup(|app| {
+            // macOS About ダイアログにライセンス情報を表示
+            let credits = [
+                "Open Source Licenses",
+                "",
+                "Tauri — MIT / Apache-2.0",
+                "React — MIT",
+                "Material UI (MUI) — MIT",
+                "Emotion — MIT",
+                "Express — MIT",
+                "React Router — MIT",
+                "react-markdown — MIT",
+                "remark-gfm — MIT",
+                "@uiw/react-md-editor — MIT",
+                "@anthropic-ai/claude-code — Apache-2.0",
+                "Vite — MIT",
+                "serde — MIT / Apache-2.0",
+                "tokio — MIT",
+                "reqwest — MIT / Apache-2.0",
+            ]
+            .join("\n");
+
+            let about_metadata = AboutMetadata {
+                name: Some("AgentNest".into()),
+                version: Some(app.package_info().version.to_string()),
+                copyright: Some("© 2025 Junpei Wada".into()),
+                credits: Some(credits),
+                ..Default::default()
+            };
+
+            let app_submenu = SubmenuBuilder::new(app, "AgentNest")
+                .about(Some(about_metadata))
+                .separator()
+                .services()
+                .separator()
+                .hide()
+                .hide_others()
+                .show_all()
+                .separator()
+                .quit()
+                .build()?;
+
+            let menu = MenuBuilder::new(app).item(&app_submenu).build()?;
+            app.set_menu(menu)?;
+
             // 保存済みウィンドウ位置を復元
             let cfg = config::load_config(app.handle());
             if let Some(bounds) = &cfg.window_bounds {
