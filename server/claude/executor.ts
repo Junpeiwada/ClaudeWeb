@@ -1,5 +1,5 @@
-import { query } from "@anthropic-ai/claude-code";
-import type { SDKMessage, SDKUserMessage, PermissionResult } from "@anthropic-ai/claude-code";
+import { query } from "@anthropic-ai/claude-agent-sdk";
+import type { SDKMessage, SDKUserMessage, PermissionResult } from "@anthropic-ai/claude-agent-sdk";
 import { randomUUID } from "crypto";
 import { appendFile, readdir, unlink, rename } from "fs/promises";
 import { join } from "path";
@@ -475,6 +475,8 @@ async function runQuery(
       ...(resumeSessionId ? { resume: resumeSessionId } : {}),
       includePartialMessages: true,
       permissionMode: "default",
+      systemPrompt: { type: "preset", preset: "claude_code" },
+      settingSources: ["user", "project", "local"],
       stderr: (data: string) => {
         log("STDERR", data);
         stderrBuffer.push(data);

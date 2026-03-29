@@ -1,6 +1,6 @@
 /**
  * サーバーコードをesbuildでバンドルし、dist-server/ に出力する。
- * @anthropic-ai/claude-code はネイティブバイナリを含むため external にし、
+ * @anthropic-ai/claude-agent-sdk はネイティブバイナリを含むため external にし、
  * node_modules ごとコピーする。
  */
 import { build } from "esbuild";
@@ -26,7 +26,7 @@ await build({
   target: "node18",
   format: "esm",
   outfile: resolve(outDir, "index.js"),
-  external: ["@anthropic-ai/claude-code"],
+  external: ["@anthropic-ai/claude-agent-sdk"],
   // CJS依存（dotenv等）がrequire()を使えるようにする
   // package.jsonに"type":"module"があるのでこのバナーはESMとして解釈される
   banner: {
@@ -41,12 +41,12 @@ await build({
 import { writeFileSync } from "fs";
 writeFileSync(resolve(outDir, "package.json"), JSON.stringify({ type: "module" }, null, 2));
 
-// 2. @anthropic-ai/claude-code をnode_modulesごとコピー
+// 2. @anthropic-ai/claude-agent-sdk をnode_modulesごとコピー
 const srcModules = resolve(root, "node_modules");
 const destModules = resolve(outDir, "node_modules");
 
 const packagesToCopy = [
-  "@anthropic-ai/claude-code",
+  "@anthropic-ai/claude-agent-sdk",
   "@img/sharp-darwin-arm64",  // macOS ARM64向けsharp
   "@img/sharp-darwin-x64",    // macOS x64向けsharp
 ];

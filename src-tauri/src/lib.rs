@@ -93,7 +93,7 @@ pub fn run() {
                 "react-markdown — MIT",
                 "remark-gfm — MIT",
                 "@uiw/react-md-editor — MIT",
-                "@anthropic-ai/claude-code — Apache-2.0",
+                "@anthropic-ai/claude-agent-sdk — see package license",
                 "Vite — MIT",
                 "serde — MIT / Apache-2.0",
                 "tokio — MIT",

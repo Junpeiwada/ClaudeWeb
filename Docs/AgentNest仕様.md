@@ -26,7 +26,7 @@ VSCode を使えないユーザーでも、ブラウザのチャット UI から
   → Tailscale VPN
     → Mac (localhost:3000)
       → AgentNest サーバ (Express)
-        → Claude Code SDK (@anthropic-ai/claude-code)
+        → Claude Agent SDK (@anthropic-ai/claude-agent-sdk)
           → 対象リポジトリのファイルシステムを直接操作
 ```
 
@@ -36,7 +36,7 @@ VSCode を使えないユーザーでも、ブラウザのチャット UI から
 |---------|------|
 | フロントエンド | React 19 + Vite 8 + MUI 7（スマホ対応レスポンシブ） |
 | バックエンド | Express (Node.js / TypeScript) |
-| AI エンジン | Claude Code SDK (`@anthropic-ai/claude-code`) |
+| AI エンジン | Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) |
 | リアルタイム通信 | Server-Sent Events (SSE)（ストリーミング表示） |
 | 認証 | ローカル運用のため不要（Tailscale で閉じたネットワーク） |
 
@@ -173,24 +173,32 @@ data: {"type": "done", "sessionId": "abc-123"}
 
 ---
 
-## Claude Code SDK 連携
+## Claude Agent SDK 連携
 
 ### 基本呼び出し
 
 ```typescript
-import { claude } from "@anthropic-ai/claude-code";
+import { query } from "@anthropic-ai/claude-agent-sdk";
 
 // セッション開始（新規）
-const result = await claude({
+const stream = query({
   prompt: message,
-  cwd: repo.path,        // リポジトリルートで実行
+  options: {
+    cwd: repo.path, // リポジトリルートで実行
+  },
 });
 
+for await (const msg of stream) {
+  console.log(msg);
+}
+
 // セッション継続
-const result = await claude({
+const resumedStream = query({
   prompt: message,
-  cwd: repo.path,
-  sessionId: sessionId,  // 前回のセッションを引き継ぐ
+  options: {
+    cwd: repo.path,
+    resume: sessionId, // 前回のセッションを引き継ぐ
+  },
 });
 ```
 

@@ -73,7 +73,7 @@ VSCode を使えないユーザーでも、ブラウザのチャット UI から
   → Tailscale VPN
     → Mac (localhost:3000)
       → AgentNest サーバ (Express)
-        → Claude Code SDK (@anthropic-ai/claude-code)
+        → Claude Agent SDK (@anthropic-ai/claude-agent-sdk)
           → 対象リポジトリのファイルシステムを直接操作
 \`\`\`
 

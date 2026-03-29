@@ -141,7 +141,7 @@ AgentNest/
 | フロントエンド | React 19, Vite 8, MUI 7, react-markdown |
 | バックエンド | Express 5, tsx (実行), TypeScript |
 | デスクトップ | Tauri 2 (Rust) |
-| AI | @anthropic-ai/claude-code SDK |
+| AI | @anthropic-ai/claude-agent-sdk |
 | リアルタイム通信 | Server-Sent Events |
 | テスト | Playwright（E2E、Chromiumのみ） |
 
