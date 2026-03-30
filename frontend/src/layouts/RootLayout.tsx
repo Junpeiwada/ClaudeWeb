@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Outlet, useNavigate, useLocation, useParams, useOutletContext } from "react-router-dom";
 import { Box } from "@mui/material";
 import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
@@ -26,6 +26,14 @@ export default function RootLayout() {
 
   const isFilesTab = location.pathname.includes("/files");
   const activeTab = isFilesTab ? "files" : "chat";
+
+  // ファイルタブの最後のパスを記憶（タブ切替時にルートに戻らないようにする）
+  const lastFilesPath = useRef(`/${encodeURIComponent(repoId)}/files`);
+  useEffect(() => {
+    if (isFilesTab) {
+      lastFilesPath.current = location.pathname;
+    }
+  }, [location.pathname, isFilesTab]);
 
   // --- Chat state（常にマウント）---
   const [fetchedSession, setFetchedSession] = useState<FetchedSession | null>(null);
@@ -77,7 +85,7 @@ export default function RootLayout() {
 
   const handleTabClick = (tabKey: "chat" | "files") => {
     if (tabKey === "files") {
-      navigate(`/${encodeURIComponent(repoId)}/files`);
+      navigate(lastFilesPath.current);
     } else {
       // チャットタブ: 現在のチャット状態を維持したままURLだけ戻す（再マウントしない）
       const chatUrl = resumeSessionId
