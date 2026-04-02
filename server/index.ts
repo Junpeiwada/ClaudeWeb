@@ -12,6 +12,7 @@ import permissionRouter from "./routes/permission.js";
 import reconnectRouter from "./routes/reconnect.js";
 import sessionsRouter from "./routes/sessions.js";
 import filesRouter from "./routes/files.js";
+import gitRouter from "./routes/git.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +30,7 @@ app.use(permissionRouter);
 app.use(reconnectRouter);
 app.use(sessionsRouter);
 app.use(filesRouter);
+app.use(gitRouter);
 
 // Serve frontend static files in production
 // バンドル版（dist-server/frontend/dist/）と開発版（../frontend/dist/）の両方に対応

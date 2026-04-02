@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation, useParams, useOutletContext } from "r
 import { Box } from "@mui/material";
 import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
+import CallSplitRoundedIcon from "@mui/icons-material/CallSplitRounded";
 import Chat from "../components/Chat";
 import type { Message } from "../hooks/useChat";
 
@@ -25,7 +26,8 @@ export default function RootLayout() {
   const { autoEdit, newChatNonce, resumeSessionId } = useOutletContext<ParentContext>();
 
   const isFilesTab = location.pathname.includes("/files");
-  const activeTab = isFilesTab ? "files" : "chat";
+  const isGitTab = location.pathname.includes("/git");
+  const activeTab = isGitTab ? "git" : isFilesTab ? "files" : "chat";
 
   // ファイルタブの最後のパスを記憶（タブ切替時にルートに戻らないようにする）
   const lastFilesPath = useRef(`/${encodeURIComponent(repoId)}/files`);
@@ -81,11 +83,14 @@ export default function RootLayout() {
   const tabs = [
     { key: "chat" as const, label: "チャット", icon: <ChatRoundedIcon sx={{ fontSize: 18 }} /> },
     { key: "files" as const, label: "ファイル", icon: <FolderRoundedIcon sx={{ fontSize: 18 }} /> },
+    { key: "git" as const, label: "Git", icon: <CallSplitRoundedIcon sx={{ fontSize: 18 }} /> },
   ];
 
-  const handleTabClick = (tabKey: "chat" | "files") => {
+  const handleTabClick = (tabKey: "chat" | "files" | "git") => {
     if (tabKey === "files") {
       navigate(lastFilesPath.current);
+    } else if (tabKey === "git") {
+      navigate(`/${encodeURIComponent(repoId)}/git`);
     } else {
       // チャットタブ: 現在のチャット状態を維持したままURLだけ戻す（再マウントしない）
       const chatUrl = resumeSessionId
@@ -158,8 +163,8 @@ export default function RootLayout() {
         )}
       </Box>
 
-      {/* Files（Outlet 経由、display で切り替え） */}
-      <Box sx={{ display: activeTab === "files" ? "flex" : "none", flexDirection: "column", flex: 1, minHeight: 0 }}>
+      {/* Files / Git（Outlet 経由、display で切り替え） */}
+      <Box sx={{ display: activeTab !== "chat" ? "flex" : "none", flexDirection: "column", flex: 1, minHeight: 0 }}>
         <Outlet context={{ autoEdit }} />
       </Box>
     </>

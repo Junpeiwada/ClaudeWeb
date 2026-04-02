@@ -4,6 +4,7 @@ import RootLayout from "./layouts/RootLayout";
 import FilesPage from "./pages/FilesPage";
 import RepoRedirect from "./pages/RepoRedirect";
 import ChatPlaceholder from "./pages/ChatPlaceholder";
+import GitPage from "./pages/GitPage";
 
 export const router = createBrowserRouter([
   {
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
           { path: "chat/:sessionId", element: <ChatPlaceholder /> },
           { path: "files", element: <FilesPage /> },
           { path: "files/*", element: <FilesPage /> },
+          { path: "git", element: <GitPage /> },
         ],
       },
     ],
