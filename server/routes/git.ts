@@ -294,4 +294,84 @@ router.post("/api/repos/:repoId/git/push", async (req, res) => {
   }
 });
 
+// GET /api/repos/:repoId/git/log?page=1&perPage=100
+// コミット履歴一覧を取得
+router.get("/api/repos/:repoId/git/log", async (req, res) => {
+  try {
+    const cwd = resolveRepo(req.params.repoId);
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage as string, 10) || 100));
+    const skip = (page - 1) * perPage;
+
+    // perPage + 1 件取得して hasMore を判定（rev-list --count より軽量）
+    const logOutput = await git(cwd, [
+      "log",
+      `--skip=${skip}`,
+      `-n`, `${perPage + 1}`,
+      "--format=%H%x00%s%x00%an%x00%aI",
+      "HEAD",
+    ]);
+
+    const allCommits = logOutput
+      .trim()
+      .split("\n")
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        const [hash, message, author, date] = line.split("\x00");
+        return { hash, message, author, date };
+      });
+
+    const hasMore = allCommits.length > perPage;
+    const commits = hasMore ? allCommits.slice(0, perPage) : allCommits;
+    res.json({ commits, hasMore });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "不明なエラー";
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// GET /api/repos/:repoId/git/show?commit=<hash>
+// コミットの詳細（メッセージ全文 + 変更ファイル一覧 + diff）を取得
+router.get("/api/repos/:repoId/git/show", async (req, res) => {
+  try {
+    const cwd = resolveRepo(req.params.repoId);
+    const commit = req.query.commit as string;
+    if (!commit || !/^[a-f0-9]{4,40}$/.test(commit)) {
+      res.status(400).json({ success: false, error: "有効な commit ハッシュが必要です。" });
+      return;
+    }
+
+    // コミット情報を取得
+    const info = (await git(cwd, [
+      "log", "-1", "--format=%H%x00%B%x00%an%x00%aI", commit,
+    ])).trim();
+    const [hash, messageBody, author, date] = info.split("\x00");
+
+    // 変更ファイル一覧を取得（--root でルートコミットにも対応）
+    const nameStatus = await git(cwd, [
+      "diff-tree", "--root", "--no-commit-id", "-r", "--name-status", commit,
+    ]);
+    const files = nameStatus
+      .trim()
+      .split("\n")
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        const parts = line.split("\t");
+        const status = parts[0].charAt(0); // R100 → R
+        const filePath = parts.length > 2 ? parts[2] : parts[1]; // リネームの場合は新パス
+        return { path: filePath, status };
+      });
+
+    // diff を取得（--root でルートコミットにも対応）
+    const diff = await git(cwd, [
+      "diff-tree", "--root", "-p", "--no-commit-id", commit,
+    ], 30000);
+
+    res.json({ hash, message: messageBody.trim(), author, date, files, diff });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "不明なエラー";
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
 export default router;
