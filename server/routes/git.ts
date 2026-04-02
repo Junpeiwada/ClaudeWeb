@@ -349,6 +349,7 @@ router.get("/api/repos/:repoId/git/show", async (req, res) => {
 
     // 変更ファイル一覧を取得（--root でルートコミットにも対応）
     const nameStatus = await git(cwd, [
+      "-c", "core.quotePath=false",
       "diff-tree", "--root", "--no-commit-id", "-r", "--name-status", commit,
     ]);
     const files = nameStatus
@@ -364,6 +365,7 @@ router.get("/api/repos/:repoId/git/show", async (req, res) => {
 
     // diff を取得（--root でルートコミットにも対応）
     const diff = await git(cwd, [
+      "-c", "core.quotePath=false",
       "diff-tree", "--root", "-p", "--no-commit-id", commit,
     ], 30000);
 
