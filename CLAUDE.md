@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 重大なルール
 
 ### テスト修正の禁止（確認必須）
-テストコード（`tests/`配下）を編集する前に、必ず [docs/テストのガイド.md](docs/テストのガイド.md) を参照すること。ユーザーの明示的な承認なしにテストコードをEdit/Writeしてはならない。
+テストコード（`tests/`配下）を編集する前に、必ず [docs/ガイド-テスト.md](docs/ガイド-テスト.md) を参照すること。ユーザーの明示的な承認なしにテストコードをEdit/Writeしてはならない。
 
 ## 開発コマンド
 
