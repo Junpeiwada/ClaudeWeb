@@ -2,10 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+開発に関する詳細な仕様・設計・ガイドは `Docs/` 配下を参照。
+
 ## 重大なルール
 
 ### テスト修正の禁止（確認必須）
-テストコード（`tests/`配下）を編集する前に、必ず [docs/ガイド-テスト.md](docs/ガイド-テスト.md) を参照すること。ユーザーの明示的な承認なしにテストコードをEdit/Writeしてはならない。
+テストコード（`tests/`配下）を編集する前に、必ず [Docs/ガイド-テスト.md](Docs/ガイド-テスト.md) を参照すること。ユーザーの明示的な承認なしにテストコードをEdit/Writeしてはならない。
 
 ## 開発コマンド
 

@@ -17,59 +17,13 @@ VSCode を使えないユーザーでも、ブラウザのチャット UI から
 - **アクセス**: Tailscale VPN 経由で外部（iPhone等）からアクセス
 - **認証**: Claude Code の Max サブスクリプション（サーバマシンにログイン済み）
 
----
-
-## システム構成
-
-```
-クライアント (iPhone Safari / PC ブラウザ)
-  → Tailscale VPN
-    → Mac (localhost:3000)
-      → AgentNest サーバ (Express)
-        → Claude Agent SDK (@anthropic-ai/claude-agent-sdk)
-          → 対象リポジトリのファイルシステムを直接操作
-```
-
-### 技術スタック
-
-| レイヤー | 技術 |
-|---------|------|
-| フロントエンド | React 19 + Vite 8 + MUI 7（スマホ対応レスポンシブ） |
-| バックエンド | Express (Node.js / TypeScript) |
-| AI エンジン | Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) |
-| リアルタイム通信 | Server-Sent Events (SSE)（ストリーミング表示） |
-| 認証 | ローカル運用のため不要（Tailscale で閉じたネットワーク） |
+> **システム構成・技術スタック・ディレクトリ構成・開発コマンド**については [CLAUDE.md](../CLAUDE.md) を参照。
 
 ---
 
 ## 画面構成
 
-### メイン画面（チャット）
-
-```
-┌─────────────────────────────────────┐
-│ AgentNest        [リポジトリ選択 ▼] │
-├─────────────────────────────────────┤
-│                                     │
-│  🤖 どのような作業をしますか？       │
-│                                     │
-│  👤 https://photos.app.goo.gl/xxx  │
-│     の釣りの写真で記事書いて         │
-│                                     │
-│  🤖 画像を取得しています...          │
-│     12枚の画像を検出しました。       │
-│     画像03の料理は何ですか？         │
-│                                     │
-│  👤 カツオのたたきです               │
-│                                     │
-│  🤖 記事を作成しました。             │
-│     posts/2026-03-25-fishing.md     │
-│     公開しますか？                   │
-│                                     │
-├─────────────────────────────────────┤
-│ [メッセージ入力...          ] [送信] │
-└─────────────────────────────────────┘
-```
+画面の詳細設計は [設計-画面.md](設計-画面.md) を参照。
 
 ### UI 要件
 
@@ -210,81 +164,6 @@ const resumedStream = query({
 - `/post` 等のカスタムコマンド相当の処理も、プロンプトで指示すれば実行可能
 
 ---
-
-## ディレクトリ構成
-
-```
-AgentNest/
-├── docs/
-│   └── AgentNest仕様.md           # 本ドキュメント
-├── server/
-│   ├── index.ts                   # Express サーバ起動
-│   ├── config.ts                  # サーバー設定
-│   ├── routes/
-│   │   ├── chat.ts                # /api/chat（SSE ストリーミング）
-│   │   ├── repos.ts               # /api/repos
-│   │   ├── files.ts               # /api/repos/:repoId/files（ファイル一覧）
-│   │   ├── sessions.ts            # /api/sessions（セッション履歴）
-│   │   ├── status.ts              # /api/status（セッション状態）
-│   │   ├── permission.ts          # /api/permission（権限承認）
-│   │   └── reconnect.ts           # /api/reconnect（再接続）
-│   └── claude/
-│       ├── executor.ts            # Claude Code SDK ラッパー
-│       └── commandExpander.ts     # スラッシュコマンド展開
-├── frontend/
-│   ├── index.html
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── components/
-│   │   │   ├── ActivityIndicator.tsx # ツール実行中の表示
-│   │   │   ├── Chat.tsx             # チャット画面
-│   │   │   ├── FileExplorer.tsx     # ファイルエクスプローラー
-│   │   │   ├── FileViewer.tsx       # ファイルビューア
-│   │   │   ├── Header.tsx           # ヘッダー
-│   │   │   ├── MessageInput.tsx     # 入力欄
-│   │   │   ├── MessageList.tsx      # メッセージ一覧
-│   │   │   ├── PermissionDialog.tsx # 権限承認ダイアログ
-│   │   │   ├── RepoSelector.tsx     # リポジトリ選択
-│   │   │   └── SessionHistory.tsx   # セッション履歴
-│   │   └── hooks/
-│   │       └── useChat.ts           # チャットロジック
-│   └── vite.config.ts
-├── src-tauri/                       # Tauriデスクトップアプリ
-│   ├── Cargo.toml
-│   ├── tauri.conf.json
-│   ├── capabilities/
-│   └── src/
-│       ├── main.rs
-│       ├── lib.rs
-│       ├── server.rs
-│       └── config.rs
-├── src-panel/                       # Tauri設定パネルUI
-│   └── index.html
-├── tests/                           # Playwright E2Eテスト
-├── scripts/                         # リリーススクリプト等
-├── package.json
-└── tsconfig.json
-```
-
----
-
-## 起動方法
-
-### 開発モード
-
-```bash
-cd AgentNest
-npm install && cd frontend && npm install
-npm run dev              # サーバ + フロントエンド同時起動
-npm run 開発:Tauriアプリ  # Tauriデスクトップアプリとして起動
-```
-
-### 本番ビルド
-
-```bash
-npm run build            # フロントエンドビルド
-npm run ビルド:Tauriアプリ # Tauriアプリビルド（署名付き）
-```
 
 ---
 
