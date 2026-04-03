@@ -45,15 +45,43 @@ export interface PendingPermission {
   toolInput: Record<string, unknown>;
 }
 
+export interface QuestionOption {
+  label: string;
+  description: string;
+  preview?: string;
+}
+
+export interface QuestionItem {
+  question: string;
+  header: string;
+  options: QuestionOption[];
+  multiSelect: boolean;
+}
+
+export interface PendingQuestion {
+  requestId: string;
+  questions: QuestionItem[];
+}
+
 export interface SessionEvent {
   type: string;
   [key: string]: unknown;
+}
+
+export interface StructuredPatchHunk {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  lines: string[];
 }
 
 export interface AssistantPart {
   type: "text" | "tool_result";
   content: string;
   toolName?: string;
+  filePath?: string;
+  structuredPatch?: StructuredPatchHunk[];
 }
 
 export interface AssistantError {
@@ -73,6 +101,7 @@ export interface Session {
   repoPath: string;
   sessionId: string | null;
   pendingPermission: PendingPermission | null;
+  pendingQuestion: PendingQuestion | null;
   abortController: AbortController;
   // Reconnection support
   assistantMessage: AssistantMessageState;
@@ -137,6 +166,7 @@ function formatToolActivity(toolName: string, input: Record<string, unknown>): s
 let currentSession: Session | null = null;
 let currentStream: AsyncGenerator<SDKMessage, void> & { interrupt?(): Promise<void> } | null = null;
 const permissionResolvers = new Map<string, { resolve: (result: PermissionResult) => void; input: Record<string, unknown> }>();
+const questionResolvers = new Map<string, { resolve: (result: PermissionResult) => void; questions: QuestionItem[] }>();
 
 export function getSession(): Session | null {
   return currentSession;
@@ -181,9 +211,35 @@ export function resolvePermission(requestId: string, approved: boolean): boolean
   return true;
 }
 
+export function resolveQuestion(
+  requestId: string,
+  answers: Record<string, string>,
+  annotations?: Record<string, { notes?: string }>,
+  deny?: boolean
+): boolean {
+  const entry = questionResolvers.get(requestId);
+  if (!entry) return false;
+
+  if (deny) {
+    entry.resolve({ behavior: "deny", message: "User skipped this question", interrupt: true });
+  } else {
+    const updatedInput: Record<string, unknown> = { questions: entry.questions, answers };
+    if (annotations) updatedInput.annotations = annotations;
+    entry.resolve({ behavior: "allow", updatedInput });
+  }
+
+  questionResolvers.delete(requestId);
+  if (currentSession && currentSession.pendingQuestion?.requestId === requestId) {
+    currentSession.pendingQuestion = null;
+  }
+  return true;
+}
+
 export interface ToolResult {
   toolName: string;
   content: string;
+  filePath?: string;
+  structuredPatch?: StructuredPatchHunk[];
 }
 
 export interface ImageData {
@@ -198,6 +254,7 @@ export interface ChatCallbacks {
   onLimitError: (error: string) => void;
   onSessionId: (sessionId: string) => void;
   onPermission: (permission: PendingPermission) => void;
+  onQuestion: (question: PendingQuestion) => void;
   onDone: (sessionId: string | null) => void;
   onError: (error: string) => void;
 }
@@ -220,6 +277,7 @@ export async function executeChat(
     repoPath,
     sessionId: resumeSessionId,
     pendingPermission: null,
+    pendingQuestion: null,
     abortController,
     assistantMessage: {
       role: "assistant",
@@ -256,8 +314,10 @@ export async function executeChat(
         type: "tool_result",
         toolName: result.toolName,
         content: result.content,
+        filePath: result.filePath,
+        structuredPatch: result.structuredPatch,
       });
-      notifyListeners(session, { type: "tool_result", toolName: result.toolName, content: result.content });
+      notifyListeners(session, { type: "tool_result", toolName: result.toolName, content: result.content, filePath: result.filePath, structuredPatch: result.structuredPatch });
       callbacks.onToolResult(result);
     },
     onLimitError: (error) => {
@@ -274,6 +334,10 @@ export async function executeChat(
     onPermission: (permission) => {
       notifyListeners(session, { type: "permission", ...permission });
       callbacks.onPermission(permission);
+    },
+    onQuestion: (q) => {
+      notifyListeners(session, { type: "question", ...q });
+      callbacks.onQuestion(q);
     },
     onDone: (sid) => {
       flushLeadingTextBuffer(session, wrappedCallbacks);
@@ -483,6 +547,30 @@ async function runQuery(
       },
       canUseTool: async (toolName, input, { signal }) => {
         log("TOOL", { toolName, autoEdit, inputKeys: Object.keys(input) });
+
+        // AskUserQuestion: 質問ダイアログを表示してユーザーの回答を待つ
+        if (toolName === "AskUserQuestion") {
+          const questions = Array.isArray(input.questions) ? (input.questions as QuestionItem[]) : [];
+          if (questions.length === 0) {
+            log("ASK_USER_QUESTION_EMPTY", { toolName });
+            return { behavior: "allow" as const, updatedInput: { questions: [], answers: {} } };
+          }
+          return new Promise<PermissionResult>((resolve) => {
+            const requestId = randomUUID();
+            const pendingQ: PendingQuestion = { requestId, questions };
+            session.pendingQuestion = pendingQ;
+            questionResolvers.set(requestId, { resolve, questions });
+            callbacks.onQuestion(pendingQ);
+
+            signal.addEventListener("abort", () => {
+              if (questionResolvers.has(requestId)) {
+                questionResolvers.delete(requestId);
+                resolve({ behavior: "deny", message: "Session aborted" });
+              }
+            });
+          });
+        }
+
         // autoEdit有効時はEdit/Writeを自動承認
         if (autoEdit) {
           const autoApproveTools = ["Edit", "Write", "MultiEdit"];
@@ -571,15 +659,28 @@ async function runQuery(
     // ツール結果（user メッセージ内の tool_result）
     if (msg.type === "user") {
       const content = (msg as any).message?.content;
+      const toolUseResult = (msg as any).tool_use_result;
       if (Array.isArray(content)) {
-        for (const block of content) {
-          if (block.type === "tool_result") {
-            const toolUseId = typeof block.tool_use_id === "string" ? block.tool_use_id : "";
-            callbacks.onToolResult({
-              toolName: toolUseNames.get(toolUseId) ?? "Tool",
-              content: stringifyToolResultContent(block.content),
-            });
+        // structuredPatch は1メッセージ=1ツール結果に対応
+        const toolResultBlocks = content.filter((b: any) => b.type === "tool_result");
+        for (const block of toolResultBlocks) {
+          const toolUseId = typeof block.tool_use_id === "string" ? block.tool_use_id : "";
+          // tool_use_result は1件のみ存在し、ブロックが1つの場合のみマッチング
+          let filePath: string | undefined;
+          let structuredPatch: StructuredPatchHunk[] | undefined;
+          if (toolResultBlocks.length === 1 && toolUseResult && typeof toolUseResult === "object") {
+            const r = toolUseResult as any;
+            if (typeof r.filePath === "string") filePath = r.filePath;
+            if (Array.isArray(r.structuredPatch) && r.structuredPatch.length > 0) {
+              structuredPatch = r.structuredPatch;
+            }
           }
+          callbacks.onToolResult({
+            toolName: toolUseNames.get(toolUseId) ?? "Tool",
+            content: stringifyToolResultContent(block.content),
+            filePath,
+            structuredPatch,
+          });
         }
       }
     }

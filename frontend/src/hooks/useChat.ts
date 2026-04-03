@@ -1,9 +1,19 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 
+export interface StructuredPatchHunk {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  lines: string[];
+}
+
 export interface AssistantPart {
   type: "text" | "tool_result";
   content: string;
   toolName?: string;
+  filePath?: string;
+  structuredPatch?: StructuredPatchHunk[];
 }
 
 export interface AssistantError {
@@ -29,6 +39,24 @@ export interface PendingPermission {
   requestId: string;
   toolName: string;
   toolInput: Record<string, unknown>;
+}
+
+export interface QuestionOption {
+  label: string;
+  description: string;
+  preview?: string;
+}
+
+export interface QuestionItem {
+  question: string;
+  header: string;
+  options: QuestionOption[];
+  multiSelect: boolean;
+}
+
+export interface PendingQuestion {
+  requestId: string;
+  questions: QuestionItem[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SSE events have dynamic shapes
@@ -81,12 +109,14 @@ function appendAssistantText(message: Message, content: string): Message {
 function appendToolResult(
   message: Message,
   toolName: string,
-  content: string
+  content: string,
+  filePath?: string,
+  structuredPatch?: StructuredPatchHunk[]
 ): Message {
   if (message.role !== "assistant") return message;
   return {
     ...message,
-    parts: [...(message.parts ?? []), { type: "tool_result", toolName, content }],
+    parts: [...(message.parts ?? []), { type: "tool_result", toolName, content, filePath, structuredPatch }],
   };
 }
 
@@ -109,6 +139,8 @@ export function useChat(
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId ?? null);
   const [pendingPermission, setPendingPermission] =
     useState<PendingPermission | null>(null);
+  const [pendingQuestion, setPendingQuestion] =
+    useState<PendingQuestion | null>(null);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string | null>(initialSessionId ?? null);
@@ -130,6 +162,7 @@ export function useChat(
     sessionIdRef.current = initialSessionId ?? null;
     forceFreshSessionRef.current = initialSessionId == null;
     setPendingPermission(null);
+    setPendingQuestion(null);
     setIsReconnecting(false);
   }, [conversationKey, initialMessages, initialSessionId]);
 
@@ -184,7 +217,7 @@ export function useChat(
         setActivity(null);
         setMessages((prev) =>
           updateLastAssistant(prev, (last) =>
-            appendToolResult(last, data.toolName ?? "Tool", data.content)
+            appendToolResult(last, data.toolName ?? "Tool", data.content, data.filePath, data.structuredPatch)
           )
         );
       } else if (data.type === "limit_error") {
@@ -200,6 +233,12 @@ export function useChat(
           requestId: data.requestId,
           toolName: data.toolName,
           toolInput: data.toolInput,
+        });
+      } else if (data.type === "question") {
+        console.log("[QUESTION_RECEIVED]", data.requestId);
+        setPendingQuestion({
+          requestId: data.requestId,
+          questions: data.questions,
         });
       } else if (data.type === "done") {
         setActivity(null);
@@ -233,6 +272,7 @@ export function useChat(
             // Restore accumulated state from the server snapshot
             if (data.sessionId) setSessionId(data.sessionId);
             setPendingPermission(data.pendingPermission ?? null);
+            setPendingQuestion(data.pendingQuestion ?? null);
             if (data.assistantMessage) {
               setMessages((prev) =>
                 updateLastAssistant(prev, () => normalizeAssistantMessage(data.assistantMessage))
@@ -457,6 +497,22 @@ export function useChat(
     []
   );
 
+  const respondQuestion = useCallback(
+    async (
+      requestId: string,
+      answers: Record<string, string> | null,
+      annotations?: Record<string, { notes?: string }>
+    ) => {
+      setPendingQuestion(null);
+      await fetch("/api/permission", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, answers: answers ?? {}, annotations }),
+      });
+    },
+    []
+  );
+
   /** 現在の生成を停止する（UIの脱出口） */
   const stopGeneration = useCallback(async () => {
     if (abortRef.current) {
@@ -470,6 +526,7 @@ export function useChat(
     setIsLoading(false);
     setActivity(null);
     setPendingPermission(null);
+    setPendingQuestion(null);
   }, []);
 
   const resetSession = useCallback(() => {
@@ -480,6 +537,7 @@ export function useChat(
     setIsLoading(false);
     setActivity(null);
     setPendingPermission(null);
+    setPendingQuestion(null);
     setIsReconnecting(false);
     if (abortRef.current) {
       abortRef.current.abort();
@@ -493,9 +551,11 @@ export function useChat(
     activity,
     sessionId,
     pendingPermission,
+    pendingQuestion,
     isReconnecting,
     sendMessage,
     respondPermission,
+    respondQuestion,
     resetSession,
     stopGeneration,
   };

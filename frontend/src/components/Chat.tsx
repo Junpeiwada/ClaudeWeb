@@ -4,6 +4,7 @@ import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import ActivityIndicator from "./ActivityIndicator";
 import PermissionDialog from "./PermissionDialog";
+import QuestionDialog from "./QuestionDialog";
 import { useChat } from "../hooks/useChat";
 import { useWakeLock } from "../hooks/useWakeLock";
 import type { Message } from "../hooks/useChat";
@@ -28,8 +29,10 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
     activity,
     sessionId,
     pendingPermission,
+    pendingQuestion,
     sendMessage,
     respondPermission,
+    respondQuestion,
     stopGeneration,
   } = useChat(initialMessages, initialSessionId, conversationKey);
 
@@ -80,7 +83,7 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
         <MessageInput
           onSend={(msg, images) => sendMessage(msg, repoId, autoEdit, images)}
           onStop={handleStop}
-          disabled={!repoId || !!pendingPermission}
+          disabled={!repoId || !!pendingPermission || !!pendingQuestion}
           isLoading={isLoading}
           visible={visible}
         />
@@ -90,6 +93,13 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
         <PermissionDialog
           permission={pendingPermission}
           onRespond={respondPermission}
+        />
+      )}
+
+      {pendingQuestion && (
+        <QuestionDialog
+          question={pendingQuestion}
+          onRespond={respondQuestion}
         />
       )}
     </Box>

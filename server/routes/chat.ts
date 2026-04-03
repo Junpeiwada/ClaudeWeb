@@ -68,7 +68,7 @@ export function createChatRouter(
         send({ type: "activity", activity });
       },
       onToolResult: (result) => {
-        send({ type: "tool_result", toolName: result.toolName, content: result.content });
+        send({ type: "tool_result", toolName: result.toolName, content: result.content, filePath: result.filePath, structuredPatch: result.structuredPatch });
       },
       onLimitError: (error) => {
         send({ type: "limit_error", error });
@@ -84,6 +84,9 @@ export function createChatRouter(
           toolInput: permission.toolInput,
           requestId: permission.requestId,
         }, true);
+      },
+      onQuestion: (q) => {
+        send({ type: "question", requestId: q.requestId, questions: q.questions }, true);
       },
       onDone: (sid) => {
         clearInterval(keepalive);

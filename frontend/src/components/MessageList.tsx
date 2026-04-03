@@ -3,6 +3,7 @@ import { Box, Typography } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Message } from "../hooks/useChat";
+import ToolDiffView from "./ToolDiffView";
 
 interface Props {
   messages: Message[];
@@ -320,20 +321,13 @@ function AssistantMessage({
               </ReactMarkdown>
             ) : null
           ) : (
-            <details key={index} className="tool-result">
-              <summary>{part.toolName ?? "Tool"} Result</summary>
-              <Box component="div">
-                <Box
-                  component="pre"
-                  sx={{
-                    mb: 0,
-                    mt: 0.5,
-                  }}
-                >
-                  <code>{part.content}</code>
-                </Box>
-              </Box>
-            </details>
+            <ToolDiffView
+              key={index}
+              toolName={part.toolName ?? "Tool"}
+              filePath={part.filePath}
+              structuredPatch={part.structuredPatch}
+              content={part.content}
+            />
           )
         )
       ) : fallbackContent.trim() ? (

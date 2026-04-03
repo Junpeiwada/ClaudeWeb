@@ -48,6 +48,7 @@ router.get("/api/reconnect", (req, res) => {
     sessionId: session.sessionId,
     assistantMessage: session.assistantMessage,
     pendingPermission: session.pendingPermission,
+    pendingQuestion: session.pendingQuestion,
     completed: session.completed,
   });
 
