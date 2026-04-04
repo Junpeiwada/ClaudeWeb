@@ -14,6 +14,7 @@ export interface AssistantPart {
   toolName?: string;
   filePath?: string;
   structuredPatch?: StructuredPatchHunk[];
+  toolInput?: Record<string, unknown>;
 }
 
 export interface AssistantError {
@@ -57,6 +58,14 @@ export interface QuestionItem {
 export interface PendingQuestion {
   requestId: string;
   questions: QuestionItem[];
+}
+
+export type SessionState = "idle" | "running" | "requires_action";
+
+export interface ToolProgress {
+  toolUseId: string;
+  toolName: string;
+  elapsedSeconds: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SSE events have dynamic shapes
@@ -111,12 +120,13 @@ function appendToolResult(
   toolName: string,
   content: string,
   filePath?: string,
-  structuredPatch?: StructuredPatchHunk[]
+  structuredPatch?: StructuredPatchHunk[],
+  toolInput?: Record<string, unknown>
 ): Message {
   if (message.role !== "assistant") return message;
   return {
     ...message,
-    parts: [...(message.parts ?? []), { type: "tool_result", toolName, content, filePath, structuredPatch }],
+    parts: [...(message.parts ?? []), { type: "tool_result", toolName, content, filePath, structuredPatch, toolInput }],
   };
 }
 
@@ -142,6 +152,8 @@ export function useChat(
   const [pendingQuestion, setPendingQuestion] =
     useState<PendingQuestion | null>(null);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [sessionState, setSessionState] = useState<SessionState | null>(null);
+  const [toolProgress, setToolProgress] = useState<ToolProgress | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string | null>(initialSessionId ?? null);
   const forceFreshSessionRef = useRef(false);
@@ -158,6 +170,8 @@ export function useChat(
     setMessages(initialMessages ?? []);
     setIsLoading(false);
     setActivity(null);
+    setSessionState(null);
+    setToolProgress(null);
     setSessionId(initialSessionId ?? null);
     sessionIdRef.current = initialSessionId ?? null;
     forceFreshSessionRef.current = initialSessionId == null;
@@ -217,7 +231,7 @@ export function useChat(
         setActivity(null);
         setMessages((prev) =>
           updateLastAssistant(prev, (last) =>
-            appendToolResult(last, data.toolName ?? "Tool", data.content, data.filePath, data.structuredPatch)
+            appendToolResult(last, data.toolName ?? "Tool", data.content, data.filePath, data.structuredPatch, data.toolInput)
           )
         );
       } else if (data.type === "limit_error") {
@@ -240,8 +254,19 @@ export function useChat(
           requestId: data.requestId,
           questions: data.questions,
         });
+      } else if (data.type === "session_state") {
+        setSessionState(data.state);
+        if (data.state === "idle") setToolProgress(null);
+      } else if (data.type === "tool_progress") {
+        setToolProgress({
+          toolUseId: data.toolUseId,
+          toolName: data.toolName,
+          elapsedSeconds: data.elapsedSeconds,
+        });
       } else if (data.type === "done") {
         setActivity(null);
+        setSessionState(null);
+        setToolProgress(null);
         if (data.sessionId) setSessionId(data.sessionId);
       } else if (data.type === "error") {
         setMessages((prev) =>
@@ -475,6 +500,8 @@ export function useChat(
           console.log("[RECONNECT] クリーンアップ: isLoading解除");
           setIsLoading(false);
           setActivity(null);
+          setSessionState(null);
+          setToolProgress(null);
           setIsReconnecting(false);
           abortRef.current = null;
         } else {
@@ -525,6 +552,8 @@ export function useChat(
     } catch { /* サーバー到達不能でも無視 */ }
     setIsLoading(false);
     setActivity(null);
+    setSessionState(null);
+    setToolProgress(null);
     setPendingPermission(null);
     setPendingQuestion(null);
   }, []);
@@ -536,6 +565,8 @@ export function useChat(
     forceFreshSessionRef.current = true;
     setIsLoading(false);
     setActivity(null);
+    setSessionState(null);
+    setToolProgress(null);
     setPendingPermission(null);
     setPendingQuestion(null);
     setIsReconnecting(false);
@@ -549,6 +580,8 @@ export function useChat(
     messages,
     isLoading,
     activity,
+    sessionState,
+    toolProgress,
     sessionId,
     pendingPermission,
     pendingQuestion,

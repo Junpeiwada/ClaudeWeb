@@ -109,6 +109,20 @@ router.get("/api/sessions/:repoId", async (req, res) => {
   }
 });
 
+interface AssistantPart {
+  type: "text" | "tool_result";
+  content: string;
+  toolName?: string;
+  toolInput?: Record<string, unknown>;
+  filePath?: string;
+}
+
+interface HistoryMessage {
+  role: "user" | "assistant";
+  content: string;
+  parts?: AssistantPart[];
+}
+
 /** GET /api/sessions/:repoId/:sessionId/messages — load conversation history */
 router.get("/api/sessions/:repoId/:sessionId/messages", async (req, res) => {
   const { repoId, sessionId } = req.params;
@@ -120,7 +134,9 @@ router.get("/api/sessions/:repoId/:sessionId/messages", async (req, res) => {
     const content = await readFile(filePath, "utf-8");
     const lines = content.split("\n");
 
-    const messages: { role: "user" | "assistant"; content: string }[] = [];
+    const messages: HistoryMessage[] = [];
+    // tool_use id → { name, input } のマップ（tool_resultと対応づけるため）
+    const toolUseMap = new Map<string, { name: string; input: Record<string, unknown> }>();
 
     for (const line of lines) {
       if (!line.trim()) continue;
@@ -130,13 +146,40 @@ router.get("/api/sessions/:repoId/:sessionId/messages", async (req, res) => {
         if (obj.type === "user") {
           const blocks = obj.message?.content;
           if (Array.isArray(blocks)) {
-            const texts = blocks
-              .filter((b: any) => b.type === "text" && typeof b.text === "string")
-              .map((b: any) => b.text as string)
-              .filter((t: string) => !t.startsWith("<ide_") && !t.startsWith("<system-reminder>"));
-            const text = texts.join("\n").trim();
-            if (text) {
-              messages.push({ role: "user", content: text });
+            // tool_result ブロックがある場合は直前のassistantメッセージに追加
+            const toolResultBlocks = blocks.filter((b: any) => b.type === "tool_result");
+            if (toolResultBlocks.length > 0) {
+              const last = messages[messages.length - 1];
+              if (last?.role === "assistant") {
+                if (!last.parts) last.parts = [];
+                for (const block of toolResultBlocks) {
+                  const toolUseId = typeof block.tool_use_id === "string" ? block.tool_use_id : "";
+                  const toolInfo = toolUseMap.get(toolUseId);
+                  const rawContent = block.content;
+                  const text = typeof rawContent === "string"
+                    ? rawContent
+                    : Array.isArray(rawContent)
+                      ? rawContent.map((item: any) => (typeof item === "string" ? item : (item?.text ?? JSON.stringify(item)))).join("\n")
+                      : rawContent == null ? "" : JSON.stringify(rawContent);
+                  last.parts.push({
+                    type: "tool_result",
+                    toolName: toolInfo?.name ?? "Tool",
+                    toolInput: toolInfo?.input,
+                    content: text,
+                  });
+                }
+              }
+              // 直前が assistant でない場合（破損・手動編集等）は tool_result をスキップ
+            } else {
+              // 通常のユーザーメッセージ
+              const texts = blocks
+                .filter((b: any) => b.type === "text" && typeof b.text === "string")
+                .map((b: any) => b.text as string)
+                .filter((t: string) => !t.startsWith("<ide_") && !t.startsWith("<system-reminder>"));
+              const text = texts.join("\n").trim();
+              if (text) {
+                messages.push({ role: "user", content: text });
+              }
             }
           }
         }
@@ -144,23 +187,30 @@ router.get("/api/sessions/:repoId/:sessionId/messages", async (req, res) => {
         if (obj.type === "assistant") {
           const blocks = obj.message?.content;
           if (Array.isArray(blocks)) {
-            const parts: string[] = [];
+            const parts: AssistantPart[] = [];
+            let textContent = "";
             for (const block of blocks) {
               if (block.type === "text" && typeof block.text === "string") {
-                parts.push(block.text);
+                textContent += block.text;
+                parts.push({ type: "text", content: block.text });
               } else if (block.type === "tool_use") {
                 const name = block.name ?? "Tool";
-                parts.push(`[${name}]`);
+                const input = block.input ?? {};
+                if (typeof block.id === "string") {
+                  toolUseMap.set(block.id, { name, input });
+                }
+                // tool_useブロック自体はpartsに追加しない（tool_resultで後から追加）
               }
             }
-            const text = parts.join("\n").trim();
-            if (text) {
+            if (parts.length > 0 || textContent.trim()) {
               // Merge consecutive assistant messages
               const last = messages[messages.length - 1];
               if (last?.role === "assistant") {
-                last.content += "\n\n" + text;
+                last.content += "\n\n" + textContent;
+                if (!last.parts) last.parts = [];
+                last.parts.push(...parts);
               } else {
-                messages.push({ role: "assistant", content: text });
+                messages.push({ role: "assistant", content: textContent, parts });
               }
             }
           }

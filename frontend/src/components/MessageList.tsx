@@ -327,6 +327,7 @@ function AssistantMessage({
               filePath={part.filePath}
               structuredPatch={part.structuredPatch}
               content={part.content}
+              toolInput={part.toolInput}
             />
           )
         )

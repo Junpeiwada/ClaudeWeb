@@ -27,6 +27,8 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
     messages,
     isLoading,
     activity,
+    sessionState,
+    toolProgress,
     sessionId,
     pendingPermission,
     pendingQuestion,
@@ -79,7 +81,7 @@ export default function Chat({ repoId, autoEdit, onSessionIdChange, initialMessa
           transition: "padding-bottom 0.2s ease",
         }}
       >
-        <ActivityIndicator activity={activity} isLoading={isLoading} />
+        <ActivityIndicator activity={activity} isLoading={isLoading} sessionState={sessionState} toolProgress={toolProgress} />
         <MessageInput
           onSend={(msg, images) => sendMessage(msg, repoId, autoEdit, images)}
           onStop={handleStop}

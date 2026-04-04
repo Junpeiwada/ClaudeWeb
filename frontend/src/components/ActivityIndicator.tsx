@@ -1,12 +1,24 @@
 import { Box, Typography } from "@mui/material";
+import type { SessionState, ToolProgress } from "../hooks/useChat";
 
 interface Props {
   activity: string | null;
   isLoading?: boolean;
+  sessionState?: SessionState | null;
+  toolProgress?: ToolProgress | null;
 }
 
-export default function ActivityIndicator({ activity, isLoading }: Props) {
-  const label = activity ?? (isLoading ? "Using Tool..." : null);
+export default function ActivityIndicator({ activity, isLoading, sessionState, toolProgress }: Props) {
+  const isWaiting = sessionState === "requires_action";
+
+  let label: string | null = null;
+  if (toolProgress) {
+    const base = activity ?? `Using ${toolProgress.toolName}...`;
+    label = `${base} (${toolProgress.elapsedSeconds}s)`;
+  } else {
+    label = activity ?? (isLoading ? "Using Tool..." : null);
+  }
+
   if (!label) return null;
 
   return (
@@ -20,31 +32,43 @@ export default function ActivityIndicator({ activity, isLoading }: Props) {
         animation: "fade-in-up 0.2s ease",
       }}
     >
-      <Box
-        sx={{
-          display: "flex",
-          gap: "3px",
-          alignItems: "center",
-        }}
-      >
-        {[0, 1, 2].map((i) => (
-          <Box
-            key={i}
-            sx={(theme) => ({
-              width: 5,
-              height: 5,
-              borderRadius: "50%",
-              bgcolor: theme.palette.accent.main,
-              animation: "pulse-dot 1.4s ease-in-out infinite",
-              animationDelay: `${i * 0.2}s`,
-            })}
-          />
-        ))}
-      </Box>
+      {isWaiting ? (
+        <Box
+          sx={(theme) => ({
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            bgcolor: theme.palette.warning.main,
+            flexShrink: 0,
+          })}
+        />
+      ) : (
+        <Box
+          sx={{
+            display: "flex",
+            gap: "3px",
+            alignItems: "center",
+          }}
+        >
+          {[0, 1, 2].map((i) => (
+            <Box
+              key={i}
+              sx={(theme) => ({
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                bgcolor: theme.palette.accent.main,
+                animation: "pulse-dot 1.4s ease-in-out infinite",
+                animationDelay: `${i * 0.2}s`,
+              })}
+            />
+          ))}
+        </Box>
+      )}
       <Typography
         sx={{
           fontSize: "12.5px",
-          color: "text.secondary",
+          color: isWaiting ? "warning.main" : "text.secondary",
           fontStyle: "italic",
           letterSpacing: "-0.01em",
         }}

@@ -6,15 +6,45 @@ interface Props {
   filePath?: string;
   structuredPatch?: StructuredPatchHunk[];
   content: string;
+  toolInput?: Record<string, unknown>;
 }
 
-export default function ToolDiffView({ toolName, filePath, structuredPatch, content }: Props) {
+function formatSummary(toolName: string, toolInput?: Record<string, unknown>, filePath?: string): string {
+  switch (toolName) {
+    case "Bash": {
+      const cmd = typeof toolInput?.command === "string" ? toolInput.command : "";
+      const truncated = cmd.length > 80 ? cmd.slice(0, 80) + "…" : cmd;
+      return truncated ? `$ ${truncated}` : "Bash";
+    }
+    case "Read":
+    case "Write":
+    case "Edit":
+    case "MultiEdit": {
+      const fp = filePath ?? (typeof toolInput?.file_path === "string" ? toolInput.file_path : "");
+      const shortPath = fp.includes("/") ? fp.split("/").slice(-2).join("/") : fp;
+      return shortPath ? `${toolName}  ${shortPath}` : toolName;
+    }
+    case "Glob": {
+      const pattern = typeof toolInput?.pattern === "string" ? toolInput.pattern : "";
+      return pattern ? `Glob  ${pattern}` : "Glob";
+    }
+    case "Grep": {
+      const pattern = typeof toolInput?.pattern === "string" ? toolInput.pattern : "";
+      return pattern ? `Grep  ${pattern}` : "Grep";
+    }
+    default:
+      return `${toolName} Result`;
+  }
+}
+
+export default function ToolDiffView({ toolName, filePath, structuredPatch, content, toolInput }: Props) {
   const hasDiff = structuredPatch && structuredPatch.length > 0;
+  const summary = formatSummary(toolName, toolInput, filePath);
 
   if (!hasDiff) {
     return (
       <details className="tool-result">
-        <summary>{toolName} Result</summary>
+        <summary>{summary}</summary>
         <Box component="div">
           <Box component="pre" sx={{ mb: 0, mt: 0.5 }}>
             <code>{content}</code>

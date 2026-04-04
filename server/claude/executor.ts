@@ -82,6 +82,7 @@ export interface AssistantPart {
   toolName?: string;
   filePath?: string;
   structuredPatch?: StructuredPatchHunk[];
+  toolInput?: Record<string, unknown>;
 }
 
 export interface AssistantError {
@@ -240,11 +241,18 @@ export interface ToolResult {
   content: string;
   filePath?: string;
   structuredPatch?: StructuredPatchHunk[];
+  toolInput?: Record<string, unknown>;
 }
 
 export interface ImageData {
   data: string;      // base64 encoded
   mediaType: string; // e.g. "image/png"
+}
+
+export interface ToolProgress {
+  toolUseId: string;
+  toolName: string;
+  elapsedSeconds: number;
 }
 
 export interface ChatCallbacks {
@@ -255,6 +263,8 @@ export interface ChatCallbacks {
   onSessionId: (sessionId: string) => void;
   onPermission: (permission: PendingPermission) => void;
   onQuestion: (question: PendingQuestion) => void;
+  onSessionState: (state: "idle" | "running" | "requires_action") => void;
+  onToolProgress: (progress: ToolProgress) => void;
   onDone: (sessionId: string | null) => void;
   onError: (error: string) => void;
 }
@@ -316,8 +326,9 @@ export async function executeChat(
         content: result.content,
         filePath: result.filePath,
         structuredPatch: result.structuredPatch,
+        toolInput: result.toolInput,
       });
-      notifyListeners(session, { type: "tool_result", toolName: result.toolName, content: result.content, filePath: result.filePath, structuredPatch: result.structuredPatch });
+      notifyListeners(session, { type: "tool_result", toolName: result.toolName, content: result.content, filePath: result.filePath, structuredPatch: result.structuredPatch, toolInput: result.toolInput });
       callbacks.onToolResult(result);
     },
     onLimitError: (error) => {
@@ -338,6 +349,14 @@ export async function executeChat(
     onQuestion: (q) => {
       notifyListeners(session, { type: "question", ...q });
       callbacks.onQuestion(q);
+    },
+    onSessionState: (state) => {
+      notifyListeners(session, { type: "session_state", state });
+      callbacks.onSessionState(state);
+    },
+    onToolProgress: (progress) => {
+      notifyListeners(session, { type: "tool_progress", ...progress });
+      callbacks.onToolProgress(progress);
     },
     onDone: (sid) => {
       flushLeadingTextBuffer(session, wrappedCallbacks);
@@ -603,6 +622,7 @@ async function runQuery(
   });
 
   const toolUseNames = new Map<string, string>();
+  const toolUseInputs = new Map<string, Record<string, unknown>>();
   let receivedTextDelta = false;
 
   for await (const msg of stream) {
@@ -611,6 +631,19 @@ async function runQuery(
     if (msg.type === "system" && "subtype" in msg && msg.subtype === "init") {
       session.sessionId = msg.session_id;
       callbacks.onSessionId(msg.session_id);
+    }
+
+    if (msg.type === "system" && "subtype" in msg && msg.subtype === "session_state_changed") {
+      callbacks.onSessionState((msg as any).state);
+    }
+
+    if (msg.type === "tool_progress") {
+      const m = msg as any;
+      callbacks.onToolProgress({
+        toolUseId: m.tool_use_id,
+        toolName: m.tool_name,
+        elapsedSeconds: m.elapsed_time_seconds,
+      });
     }
 
     // ストリーミングイベント（トークン単位のリアルタイム配信）
@@ -648,6 +681,7 @@ async function runQuery(
             const toolBlock = block as { id?: string; name: string; input: Record<string, unknown> };
             if (typeof toolBlock.id === "string") {
               toolUseNames.set(toolBlock.id, toolBlock.name);
+              toolUseInputs.set(toolBlock.id, toolBlock.input);
             }
             const label = formatToolActivity(toolBlock.name, toolBlock.input);
             callbacks.onActivity(label);
@@ -680,6 +714,7 @@ async function runQuery(
             content: stringifyToolResultContent(block.content),
             filePath,
             structuredPatch,
+            toolInput: toolUseInputs.get(toolUseId),
           });
         }
       }
