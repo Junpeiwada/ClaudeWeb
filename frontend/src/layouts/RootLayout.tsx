@@ -88,7 +88,11 @@ export default function RootLayout() {
 
   const handleTabClick = (tabKey: "chat" | "files" | "git") => {
     if (tabKey === "files") {
-      navigate(lastFilesPath.current);
+      const repoPrefix = `/${encodeURIComponent(repoId)}/`;
+      const target = lastFilesPath.current.startsWith(repoPrefix)
+        ? lastFilesPath.current
+        : `${repoPrefix}files`;
+      navigate(target);
     } else if (tabKey === "git") {
       navigate(`/${encodeURIComponent(repoId)}/git`);
     } else {
