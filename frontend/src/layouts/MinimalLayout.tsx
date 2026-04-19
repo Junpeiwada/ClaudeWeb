@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { chatPath, chatSessionPath } from "../utils/paths";
 import { Box, CssBaseline, ThemeProvider } from "@mui/material";
 import { theme } from "../theme";
 import Header from "../components/Header";
@@ -35,14 +36,14 @@ export default function MinimalLayout() {
   const handleRepoChange = useCallback((newRepoId: string) => {
     setResumeSessionId(null);
     setNewChatNonce((n) => n + 1);
-    navigate(`/${encodeURIComponent(newRepoId)}/chat`);
+    navigate(chatPath(newRepoId));
   }, [navigate]);
 
   const handleNewChat = useCallback(() => {
     setResumeSessionId(null);
     setNewChatNonce((n) => n + 1);
     if (repoId) {
-      navigate(`/${encodeURIComponent(repoId)}/chat`);
+      navigate(chatPath(repoId));
     } else {
       navigate("/");
     }
@@ -51,7 +52,7 @@ export default function MinimalLayout() {
   const handleResumeSession = useCallback((sessionId: string) => {
     if (repoId) {
       setResumeSessionId(sessionId);
-      navigate(`/${encodeURIComponent(repoId)}/chat/${sessionId}`);
+      navigate(chatSessionPath(repoId, sessionId));
     }
   }, [navigate, repoId]);
 

@@ -18,6 +18,7 @@ import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
 import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import FileViewer from "./FileViewer";
+import { apiFilesPath } from "../utils/paths";
 
 interface FileEntry {
   name: string;
@@ -31,7 +32,6 @@ interface Props {
   repoId: string;
   currentPath: string;
   onNavigate: (path: string) => void;
-  onSwitchToChat: () => void;
 }
 
 const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico"]);
@@ -55,7 +55,7 @@ function formatSize(bytes: number): string {
 
 type ViewMode = "directory" | "file" | "loading" | "error";
 
-export default function FileExplorer({ repoId, currentPath, onNavigate, onSwitchToChat }: Props) {
+export default function FileExplorer({ repoId, currentPath, onNavigate }: Props) {
   const theme = useTheme();
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,14 +69,7 @@ export default function FileExplorer({ repoId, currentPath, onNavigate, onSwitch
     setFetchError(false);
 
     try {
-      // まずディレクトリとして取得を試みる
-      // パス全体をencodeURIComponentするとスラッシュが%2Fになるため、セグメント単位でエンコード
-      const encodedDir = pathStr
-        .split("/")
-        .map(encodeURIComponent)
-        .join("/");
-      const params = pathStr ? `?dir=${encodedDir}` : "";
-      const res = await fetch(`/api/repos/${encodeURIComponent(repoId)}/files${params}`);
+      const res = await fetch(apiFilesPath(repoId, pathStr));
 
       if (res.ok) {
         const data: FileEntry[] = await res.json();

@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { apiGitBase, apiGitShowPath } from "../utils/paths";
 
 export interface GitCommitSummary {
   hash: string;
@@ -49,8 +50,8 @@ export function useGitHistory(repoId: string): UseGitHistoryReturn {
   const [selectedHash, setSelectedHash] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const base = `/api/repos/${encodeURIComponent(repoId)}/git`;
-  const errorTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const base = apiGitBase(repoId);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     return () => {
@@ -109,7 +110,7 @@ export function useGitHistory(repoId: string): UseGitHistoryReturn {
     setSelectedHash(hash);
     setDetailLoading(true);
     try {
-      const res = await window.fetch(`${base}/show?commit=${encodeURIComponent(hash)}`);
+      const res = await window.fetch(apiGitShowPath(repoId, hash));
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || "コミット詳細取得に失敗しました。");

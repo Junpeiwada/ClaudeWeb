@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { apiSessionsPath } from "../utils/paths";
 import { Box, Typography, Collapse, InputBase } from "@mui/material";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 
@@ -37,7 +38,7 @@ export default function SessionHistory({ repoId, onSelect }: Props) {
   useEffect(() => {
     if (!repoId || !open) return;
     setFetchError(false);
-    fetch(`/api/sessions/${encodeURIComponent(repoId)}`)
+    fetch(apiSessionsPath(repoId))
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then(setSessions)
       .catch(() => { setSessions([]); setFetchError(true); });

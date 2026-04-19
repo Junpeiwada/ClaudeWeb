@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { apiGitBase, apiGitDiffPath } from "../utils/paths";
 
 export interface GitFile {
   path: string;
@@ -44,7 +45,7 @@ export function useGitStatus(repoId: string): UseGitStatusReturn {
   const [commitMessage, setCommitMessage] = useState("");
   const [operationLoading, setOperationLoading] = useState(false);
 
-  const base = `/api/repos/${encodeURIComponent(repoId)}/git`;
+  const base = apiGitBase(repoId);
 
   const showError = useCallback((msg: string) => {
     setError(msg);
@@ -73,7 +74,7 @@ export function useGitStatus(repoId: string): UseGitStatusReturn {
     setSelectedFile(file);
     setDiffLoading(true);
     try {
-      const res = await window.fetch(`${base}/diff?file=${encodeURIComponent(file)}`);
+      const res = await window.fetch(apiGitDiffPath(repoId, file));
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || "Diff取得に失敗しました。");

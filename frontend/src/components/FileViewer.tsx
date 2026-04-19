@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
+import { apiFilePath, apiRawPath } from "../utils/paths";
 import { Box, Typography, IconButton, CircularProgress, Tooltip } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
@@ -35,7 +36,7 @@ function resolveImageSrc(src: string, repoId: string, filePath: string): string 
     if (p === "..") resolved.pop();
     else resolved.push(p);
   }
-  return `/api/repos/${encodeURIComponent(repoId)}/raw/${resolved.map(encodeURIComponent).join("/")}`;
+  return apiRawPath(repoId, resolved.join("/"));
 }
 
 export default function FileViewer({ repoId, filePath, onClose }: Props) {
@@ -61,7 +62,7 @@ export default function FileViewer({ repoId, filePath, onClose }: Props) {
   useEffect(() => {
     let cancelled = false;
     setFetchError(false);
-    fetch(`/api/repos/${encodeURIComponent(repoId)}/file/${filePath.split("/").map(encodeURIComponent).join("/")}`)
+    fetch(apiFilePath(repoId, filePath))
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((result) => { if (!cancelled) setData(result); })
       .catch(() => {
@@ -97,7 +98,7 @@ export default function FileViewer({ repoId, filePath, onClose }: Props) {
     setSaving(true);
     try {
       const res = await fetch(
-        `/api/repos/${encodeURIComponent(repoId)}/file/${filePath.split("/").map(encodeURIComponent).join("/")}`,
+        apiFilePath(repoId, filePath),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

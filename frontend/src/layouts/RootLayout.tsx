@@ -6,6 +6,7 @@ import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import CallSplitRoundedIcon from "@mui/icons-material/CallSplitRounded";
 import Chat from "../components/Chat";
 import type { Message } from "../hooks/useChat";
+import { chatPath, chatSessionPath, filesPath, gitPath, repoNavPrefix, apiSessionMessagesPath } from "../utils/paths";
 
 interface ParentContext {
   autoEdit: boolean;
@@ -30,7 +31,7 @@ export default function RootLayout() {
   const activeTab = isGitTab ? "git" : isFilesTab ? "files" : "chat";
 
   // ファイルタブの最後のパスを記憶（タブ切替時にルートに戻らないようにする）
-  const lastFilesPath = useRef(`/${encodeURIComponent(repoId)}/files`);
+  const lastFilesPath = useRef(filesPath(repoId));
   useEffect(() => {
     if (isFilesTab) {
       lastFilesPath.current = location.pathname;
@@ -45,7 +46,7 @@ export default function RootLayout() {
     if (!resumeSessionId) return;
 
     let cancelled = false;
-    fetch(`/api/sessions/${encodeURIComponent(repoId)}/${resumeSessionId}/messages`)
+    fetch(apiSessionMessagesPath(repoId, resumeSessionId))
       .then((r) => (r.ok ? r.json() : []))
       .then((messages: Message[]) => {
         if (!cancelled) {
@@ -88,19 +89,16 @@ export default function RootLayout() {
 
   const handleTabClick = (tabKey: "chat" | "files" | "git") => {
     if (tabKey === "files") {
-      const repoPrefix = `/${encodeURIComponent(repoId)}/`;
-      const target = lastFilesPath.current.startsWith(repoPrefix)
+      const prefix = repoNavPrefix(repoId);
+      const target = lastFilesPath.current.startsWith(prefix)
         ? lastFilesPath.current
-        : `${repoPrefix}files`;
+        : filesPath(repoId);
       navigate(target);
     } else if (tabKey === "git") {
-      navigate(`/${encodeURIComponent(repoId)}/git`);
+      navigate(gitPath(repoId));
     } else {
       // チャットタブ: 現在のチャット状態を維持したままURLだけ戻す（再マウントしない）
-      const chatUrl = resumeSessionId
-        ? `/${encodeURIComponent(repoId)}/chat/${encodeURIComponent(resumeSessionId)}`
-        : `/${encodeURIComponent(repoId)}/chat`;
-      navigate(chatUrl);
+      navigate(resumeSessionId ? chatSessionPath(repoId, resumeSessionId) : chatPath(repoId));
     }
   };
 
@@ -156,7 +154,7 @@ export default function RootLayout() {
             onSessionIdChange={(sessionId) => {
               // URL同期: replaceStateでReact Routerの再レンダリングを起こさない
               if (sessionId) {
-                const newUrl = `/${encodeURIComponent(repoId)}/chat/${encodeURIComponent(sessionId)}`;
+                const newUrl = chatSessionPath(repoId, sessionId);
                 window.history.replaceState(null, "", newUrl);
               }
             }}
